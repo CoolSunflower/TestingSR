@@ -1,5 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 import { MessageSquare, Bell } from "lucide-react";
+import Icon from "public/Icon.svg";
 
 const navItems = [
   { label: "Overview", path: "/" },
@@ -18,7 +19,7 @@ export default function Navbar() {
         {/* Logo */}
         <Link to="/" className="flex items-center gap-2.5 shrink-0">
           <img
-            src="/Icon.svg"
+            src={Icon}
             alt="SocialRumr icon"
             className="w-[26px] h-[26px] object-contain"
           />
