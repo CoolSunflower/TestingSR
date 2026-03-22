@@ -69,7 +69,7 @@ export default function MentionsChart() {
   return (
     <div className="bg-white rounded-xl border border-gray-100 p-5 flex flex-col">
       <div className="flex items-center justify-between mb-5">
-        <h2 className="font-semibold text-gray-900 text-[15px]">Mentions Over Time</h2>
+        <h2 className="font-semibold text-gray-900 text-[17px]">Mentions Over Time</h2>
         <div className="flex items-center gap-2">
           {["7d", "14d", "30d"].map((p) => (
             <button
@@ -91,9 +91,9 @@ export default function MentionsChart() {
         </div>
       </div>
 
-      <div className="flex-1 min-h-[200px]">
-        <ResponsiveContainer width="100%" height={220}>
-          <AreaChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+      <div className="flex-1 min-h-[260px] lg:min-h-[300px]">
+        <ResponsiveContainer width="100%" height="100%">
+          <AreaChart data={data} margin={{ top: 8, right: 6, left: -20, bottom: 6 }}>
             <defs>
               <linearGradient id="mentionsGradient" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor="#3B82F6" stopOpacity={0.15} />
@@ -103,13 +103,13 @@ export default function MentionsChart() {
             <CartesianGrid stroke="#F3F4F6" strokeDasharray="0" vertical={false} />
             <XAxis
               dataKey="day"
-              tick={{ fontSize: 11, fill: "#9CA3AF", fontFamily: "Inter" }}
+              tick={{ fontSize: 11, fill: "#9CA3AF", fontFamily: "IBM Plex Sans" }}
               axisLine={false}
               tickLine={false}
               dy={8}
             />
             <YAxis
-              tick={{ fontSize: 11, fill: "#9CA3AF", fontFamily: "Inter" }}
+              tick={{ fontSize: 11, fill: "#9CA3AF", fontFamily: "IBM Plex Sans" }}
               axisLine={false}
               tickLine={false}
               tickFormatter={(v) => (v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v)}

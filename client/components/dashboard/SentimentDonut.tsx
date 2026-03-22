@@ -1,15 +1,47 @@
-import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
+import { useMemo, useState } from "react";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 
 const data = [
   { name: "Positive", value: 60, color: "#3B82F6" },
-  { name: "Neutral", value: 25, color: "#F59E0B" },
+  { name: "Neutral", value: 25, color: "#F4B400" },
   { name: "Negative", value: 15, color: "#EF4444" },
 ];
 
+function SentimentTooltip({ active, payload }: { active?: boolean; payload?: Array<{ payload: { name: string; value: number; mentions: number; color: string } }> }) {
+  if (!active || !payload || payload.length === 0) {
+    return null;
+  }
+
+  const item = payload[0].payload;
+
+  return (
+    <div className="rounded-lg bg-[#111827] text-white px-3 py-2 shadow-[0_8px_16px_rgba(0,0,0,0.2)]">
+      <p className="text-[11px] font-semibold" style={{ color: item.color }}>
+        {item.name}
+      </p>
+      <p className="text-[12px] font-medium text-white">
+        {item.value}% ({item.mentions.toLocaleString()} mentions)
+      </p>
+    </div>
+  );
+}
+
 export default function SentimentDonut() {
+  const totalMentions = 14208;
+  const withMentions = useMemo(
+    () =>
+      data.map((item) => ({
+        ...item,
+        mentions: Math.round((item.value / 100) * totalMentions),
+      })),
+    [],
+  );
+  const [activeName, setActiveName] = useState("Positive");
+  const activeSegment = withMentions.find((item) => item.name === activeName) ?? withMentions[0];
+
   return (
     <div className="bg-white rounded-xl border border-gray-100 p-5 flex flex-col">
-      <h2 className="font-semibold text-gray-900 text-[15px] mb-4">
+      <h2 className="font-semibold text-gray-900 text-[17px] mb-4">
         Sentiment Distribution
       </h2>
 
@@ -19,7 +51,7 @@ export default function SentimentDonut() {
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
-                data={data}
+                data={withMentions}
                 cx="50%"
                 cy="50%"
                 innerRadius={60}
@@ -29,28 +61,46 @@ export default function SentimentDonut() {
                 dataKey="value"
                 strokeWidth={3}
                 stroke="white"
+                onMouseMove={(_, index) => {
+                  if (typeof index === "number") {
+                    setActiveName(withMentions[index].name);
+                  }
+                }}
+                onMouseLeave={() => setActiveName("Positive")}
+                cursor="pointer"
               >
-                {data.map((entry, index) => (
+                {withMentions.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={entry.color} />
                 ))}
               </Pie>
+              <Tooltip
+                cursor={false}
+                content={<SentimentTooltip />}
+              />
             </PieChart>
           </ResponsiveContainer>
           {/* Center label */}
           <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
             <span className="text-[28px] font-bold text-gray-900 leading-none">
-              60%
+              {activeSegment.value}%
             </span>
-            <span className="text-[10px] font-semibold text-blue-500 tracking-widest uppercase mt-1">
-              Positive
+            <span
+              className="text-[10px] font-semibold tracking-widest uppercase mt-1"
+              style={{ color: activeSegment.color }}
+            >
+              {activeSegment.name}
             </span>
           </div>
         </div>
 
         {/* Legend */}
         <div className="w-full mt-5 space-y-2.5">
-          {data.map((item) => (
-            <div key={item.name} className="flex items-center justify-between">
+          {withMentions.map((item) => (
+            <div
+              key={item.name}
+              className="flex items-center justify-between"
+              onMouseEnter={() => setActiveName(item.name)}
+            >
               <div className="flex items-center gap-2">
                 <div
                   className="w-2.5 h-2.5 rounded-full shrink-0"
@@ -58,7 +108,7 @@ export default function SentimentDonut() {
                 />
                 <span className="text-sm text-gray-600">{item.name}</span>
               </div>
-              <span className="text-sm font-semibold text-gray-800">
+              <span className="text-sm font-semibold text-gray-800" title={`${item.mentions.toLocaleString()} mentions`}>
                 {item.value}%
               </span>
             </div>

@@ -1,4 +1,5 @@
 import { Upload, Settings, Zap, Download } from "lucide-react";
+import Navbar from "@/components/Navbar";
 import StatsRow from "@/components/dashboard/StatsRow";
 import MentionsChart from "@/components/dashboard/MentionsChart";
 import SentimentDonut from "@/components/dashboard/SentimentDonut";
@@ -9,7 +10,8 @@ import NarrativeDigest from "@/components/dashboard/NarrativeDigest";
 export default function Index() {
   return (
     <div className="min-h-screen bg-[#F5F6F8]">
-      <div className="max-w-[1280px] mx-auto px-6 py-6 space-y-5">
+      <Navbar />
+      <div className="max-w-[1440px] mx-auto px-4 sm:px-6 xl:px-8 py-6 space-y-5">
         {/* Breadcrumb */}
         <div className="flex items-center gap-2 text-[11px] text-gray-400 font-medium uppercase tracking-widest">
           <span className="flex items-center gap-1.5">
@@ -26,22 +28,22 @@ export default function Index() {
         </div>
 
         {/* Page header */}
-        <div className="flex items-center justify-between gap-4 flex-wrap">
-          <h1 className="text-[32px] font-bold text-gray-900 tracking-tight">
+        <div className="flex items-end justify-between gap-4 flex-wrap">
+          <h1 className="text-[48px] sm:text-[56px] lg:text-[64px] leading-[0.95] font-normal text-[#111827] tracking-[-0.03em]">
             Action Center
           </h1>
-          <div className="flex items-center gap-2">
-            <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-white rounded-lg transition-colors border border-gray-200 bg-white">
+          <div className="flex items-center gap-2 w-full md:w-auto overflow-x-auto pb-1 md:pb-0">
+            <button className="p-2.5 text-gray-400 hover:text-gray-600 hover:bg-white rounded-xl transition-colors border border-gray-200 bg-white shrink-0">
               <Upload size={16} />
             </button>
-            <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-white rounded-lg transition-colors border border-gray-200 bg-white">
+            <button className="p-2.5 text-gray-400 hover:text-gray-600 hover:bg-white rounded-xl transition-colors border border-gray-200 bg-white shrink-0">
               <Settings size={16} />
             </button>
-            <button className="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-gray-200 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
+            <button className="flex items-center gap-2 px-4 sm:px-5 py-2.5 rounded-xl border border-gray-200 bg-white text-sm font-semibold text-gray-800 hover:bg-gray-50 transition-colors shrink-0">
               <Zap size={14} className="text-yellow-500" />
               Generate brief
             </button>
-            <button className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-gray-900 text-white text-sm font-medium hover:bg-gray-800 transition-colors">
+            <button className="flex items-center gap-2 px-5 sm:px-6 py-2.5 rounded-xl bg-black text-white text-sm font-semibold hover:bg-[#10131A] transition-colors shadow-[0_8px_16px_rgba(0,0,0,0.16)] shrink-0">
               <Download size={14} />
               Download today's report
             </button>

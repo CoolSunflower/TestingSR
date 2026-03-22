@@ -9,7 +9,7 @@ export default function TrendingTopics() {
   return (
     <div className="bg-white rounded-xl border border-gray-100 p-5 flex flex-col h-full">
       <div className="flex items-center justify-between mb-5">
-        <h2 className="font-semibold text-gray-900 text-[15px]">Trending Topics</h2>
+        <h2 className="font-semibold text-gray-900 text-[17px]">Trending Topics</h2>
         <span className="text-[11px] font-bold text-blue-500 tracking-widest uppercase">
           Insights
         </span>
