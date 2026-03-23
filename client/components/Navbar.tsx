@@ -3,7 +3,7 @@ import { MessageSquare, Bell } from "lucide-react";
 
 const navItems = [
   { label: "Overview", path: "/" },
-  { label: "Content", path: "/content" },
+  { label: "Mentions", path: "/Mentions" },
   { label: "Segments", path: "/segments" },
   { label: "Risks", path: "/risks" },
   { label: "Integrations", path: "/integrations" },

@@ -7,16 +7,21 @@ interface StatCardProps {
   suffix?: string;
   change?: number;
   changeType?: "positive" | "negative";
+  color?: string;
 }
 
-function StatCard({
+export function StatCard({
   label,
   value,
   suffix,
   change,
   changeType,
+  color = "infer",
 }: StatCardProps) {
   const accentGradient = "linear-gradient(180deg, #6B7280 0%, #D1D5DB 100%)";
+
+  const bg_color = color === "infer" ? (changeType === "positive" ? "#EAF8F1" : "#FDEEEF") : color;
+  const text_color = color === "infer" ? (changeType === "positive" ? "#159A62" : "#D33B47") : color;
 
   return (
     <div className="relative min-w-0 px-4 sm:px-5 py-3.5 xl:py-4.5">
@@ -38,11 +43,7 @@ function StatCard({
         )}
         {typeof change === "number" && (
           <span
-            className={`inline-flex items-center gap-1 rounded-md px-2 py-[3px] text-[11px] font-semibold ml-2 mb-1 ${
-              changeType === "positive"
-                ? "bg-[#EAF8F1] text-[#159A62]"
-                : "bg-[#FDEEEF] text-[#D33B47]"
-            }`}
+            className={`inline-flex items-center gap-1 rounded-md px-2 py-[3px] text-[11px] font-semibold ml-2 mb-1 bg-[${bg_color}] text-[${text_color}]`}
           >
             {changeType === "positive" ? (
               <ArrowUpRight size={12} />
