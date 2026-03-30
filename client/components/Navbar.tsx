@@ -4,7 +4,7 @@ import { MessageSquare, Bell } from "lucide-react";
 const navItems = [
   { label: "Overview", path: "/" },
   { label: "Mentions", path: "/Mentions" },
-  { label: "Segments", path: "/segments" },
+  { label: "Consulting", path: "/Consulting" },
   { label: "Reports", path: "/AllReports" },
   { label: "Profile", path: "/MonitoringProfile" },
 ];
