@@ -6,7 +6,7 @@ const navItems = [
   { label: "Mentions", path: "/Mentions" },
   { label: "Segments", path: "/segments" },
   { label: "Risks", path: "/risks" },
-  { label: "Integrations", path: "/integrations" },
+  { label: "Profile", path: "/MonitoringProfile" },
 ];
 
 export default function Navbar() {

@@ -2,7 +2,7 @@ import { Download, Flag, Bookmark, Twitter, Facebook, Instagram, Linkedin, Messa
 import Navbar from "@/components/Navbar";
 import React, { useState } from "react";
 import { StatCard } from "@/components/dashboard/StatsRow";
-import { FilterRow, FilterRow2 } from "@/components/FilterRow";
+import { FilterRow } from "@/components/FilterRow";
 import { DateRange } from "react-day-picker";
 import { Button } from "@/components/ui/button";
 import {
@@ -95,7 +95,7 @@ const PLATFORM_ICONS = {
   Reddit: MessageCircle,
 };
 
-const PLATFORM_COLORS = {
+export const PLATFORM_COLORS = {
   Twitter: "text-[#1DA1F2]",
   Facebook: "text-[#1877F2]",
   Instagram: "text-[#E4405F]",
