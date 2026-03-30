@@ -269,7 +269,7 @@ function KeywordSetup() {
                       disabled={!newKeyword.trim()}
                       className="bg-gray-900 hover:bg-gray-800 text-white px-6 transition-all active:scale-95 shadow-sm hover:shadow-md animate-in fade-in slide-in-from-right-2 duration-300"
                     >
-                      <Plus size={16} className="mr-1" />
+                      {/* <Plus size={16} className="mr-1" /> */}
                       Add Keyword
                     </Button>
                   )}
