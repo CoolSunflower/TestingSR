@@ -124,26 +124,26 @@ function ReportCard({ report }: { report: Report }) {
               Trend Changes
             </p>
 
-            <div className="space-y-2 max-w-[300px]">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-500">Mentions</span>
-                <span className="font-semibold text-green-600">
-                  ↑ {report.changeMetrics.mentionsDelta}%
-                </span>
-              </div>
-
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-500">Negative Sentiment</span>
-                <span className="font-semibold text-red-600">
-                  ↑ {report.changeMetrics.sentimentDelta}%
-                </span>
-              </div>
-
+            <div className="space-y-2">
               {report.changeMetrics.spike && (
                 <div className="text-sm text-indigo-600 font-medium">
                   Spike: {report.changeMetrics.spike}
                 </div>
               )}
+
+              <div className="flex items-center gap-2 text-sm">
+                <span className="font-semibold text-green-600">
+                  ↑ {report.changeMetrics.mentionsDelta}%
+                </span>
+                <span className="text-gray-500">Mentions</span>
+              </div>
+
+              <div className="flex items-center gap-2 text-sm">
+                <span className="font-semibold text-red-600">
+                  ↑ {report.changeMetrics.sentimentDelta}%
+                </span>
+                <span className="text-gray-500">Negative Sentiment</span>
+              </div>
             </div>
           </div>
 

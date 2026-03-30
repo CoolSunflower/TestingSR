@@ -27,8 +27,9 @@ function StatsRow() {
         label="High Risk Alerts (Today)"
         value="92"
         change={12.5}
-        changeType="positive"
-        color="#D33B47"
+        changeType="positive" // change is positive so up arrow, BUT this is an alert count so we want red color to indicate that it's bad, not green
+        text_color_forced="#D33B47" // force red text color for this card since it's an alert count
+        bg_color_forced="#FDEEEF"
       />
       <StatCard
         label="Positive Sentiment"
@@ -40,8 +41,9 @@ function StatsRow() {
         label="Negative Sentiment"
         value="49%"
         change={2.1}
-        changeType="positive"
-        color="#D33B47"
+        changeType="negative" // a negative change in negative sentiment is a good thing, therefore color should be green
+        text_color_forced="#159A62"
+        bg_color_forced="#EAF8F1"
       />
     </div>
   );

@@ -7,7 +7,8 @@ interface StatCardProps {
   suffix?: string;
   change?: number;
   changeType?: "positive" | "negative";
-  color?: string;
+  text_color_forced?: string;
+  bg_color_forced?: string;
 }
 
 export function StatCard({
@@ -16,12 +17,15 @@ export function StatCard({
   suffix,
   change,
   changeType,
-  color = "infer",
+  text_color_forced = "infer",
+  bg_color_forced = "infer",
 }: StatCardProps) {
   const accentGradient = "linear-gradient(180deg, #6B7280 0%, #D1D5DB 100%)";
 
-  const bg_color = color === "infer" ? (changeType === "positive" ? "#EAF8F1" : "#FDEEEF") : color;
-  const text_color = color === "infer" ? (changeType === "positive" ? "#159A62" : "#D33B47") : color;
+  const bg_color = bg_color_forced === "infer" ? (changeType === "positive" ? "#EAF8F1" : "#FDEEEF") : bg_color_forced;
+  const text_color = text_color_forced === "infer" ? (changeType === "positive" ? "#159A62" : "#D33B47") : text_color_forced;
+
+  console.log("bg_color:", bg_color, "text_color:", text_color, label, changeType);
 
   return (
     <div className="relative min-w-0 px-4 sm:px-5 py-3.5 xl:py-4.5">
@@ -34,7 +38,14 @@ export function StatCard({
       </p>
       <div className="flex items-end gap-1 flex-wrap">
         <span className="text-[50px] sm:text-[54px] leading-[0.82] font-semibold text-[#0F172A] tracking-[-0.03em]">
-          {value}
+          {/* special case for Risk Score, if value is higher than 50 color it red */}
+          {
+            label === "Risk Score" && parseInt(value) > 50 ? (
+              <span style={{ color: "#D33B47" }}>{value}</span>
+            ) : (
+              value
+            )
+          }
         </span>
         {suffix && (
           <span className="text-[22px] leading-none text-[#6B7280] font-normal mb-[8px]">
@@ -43,7 +54,11 @@ export function StatCard({
         )}
         {typeof change === "number" && (
           <span
-            className={`inline-flex items-center gap-1 rounded-md px-2 py-[3px] text-[11px] font-semibold ml-2 mb-1 bg-[${bg_color}] text-[${text_color}]`}
+            className={`inline-flex items-center gap-1 rounded-md px-2 py-[3px] text-[11px] font-semibold ml-2`}
+              style={{
+                backgroundColor: bg_color,
+                color: text_color,
+              }}
           >
             {changeType === "positive" ? (
               <ArrowUpRight size={12} />
@@ -58,46 +73,47 @@ export function StatCard({
   );
 }
 
-function SourcesCard() {
-  const sources = useMemo(
+function SentimentCard() {
+  const sentiments = useMemo(
     () => [
       {
-        key: "x",
-        label: "X",
+        key: "positive",
+        label: "Positive",
         share: 40,
         mentions: 5683,
         trend: "+8.1%",
-        color: "#3B82F6",
+        color: "#3bf670",
       },
       {
-        key: "reddit",
-        label: "Reddit",
+        key: "neutral",
+        label: "Neutral",
         share: 35,
         mentions: 4973,
         trend: "+3.4%",
-        color: "#F97316",
+        color: "#F4B400",
       },
       {
-        key: "alerts",
-        label: "Alerts",
+        key: "negative",
+        label: "Negative",
         share: 25,
         mentions: 3552,
         trend: "-1.2%",
-        color: "#10B981",
+        color: "#EF4444",
       },
     ],
     [],
   );
-  const [activeSource, setActiveSource] = useState(sources[0]);
+
+  const [activeSource, setActiveSource] = useState(sentiments[0]);
   const [isHoveringSources, setIsHoveringSources] = useState(false);
   const sourceStarts = useMemo(() => {
     let cumulative = 0;
-    return sources.map((source) => {
+    return sentiments.map((sentiment) => {
       const start = cumulative;
-      cumulative += source.share;
-      return { key: source.key, start };
+      cumulative += sentiment.share;
+      return { key: sentiment.key, start };
     });
-  }, [sources]);
+  }, [sentiments]);
 
   return (
     <div
@@ -112,38 +128,38 @@ function SourcesCard() {
         style={{ backgroundImage: "linear-gradient(180deg, #4B5563 0%, #D1D5DB 100%)" }}
       />
       <p className="text-[10px] sm:text-[11px] font-medium text-[#6B7280] tracking-[0.16em] uppercase mb-2">
-        Sources
+        Sentiment
       </p>
       <div className="flex gap-[2px] mb-1.5 mt-1 rounded-full overflow-hidden bg-[#E5E7EB]">
-        {sources.map((source) => (
+        {sentiments.map((sentiment) => (
           <button
-            key={source.key}
+            key={sentiment.key}
             type="button"
-            onMouseEnter={() => setActiveSource(source)}
-            onFocus={() => setActiveSource(source)}
+            onMouseEnter={() => setActiveSource(sentiment)}
+            onFocus={() => setActiveSource(sentiment)}
             className="h-3.5 transition-opacity hover:opacity-85 focus:outline-none focus:opacity-85"
-            style={{ width: `${source.share}%`, backgroundColor: source.color }}
-            aria-label={`${source.label} sources`}
+            style={{ width: `${sentiment.share}%`, backgroundColor: sentiment.color }}
+            aria-label={`${sentiment.label} sources`}
           />
         ))}
       </div>
       <div className="relative mt-2 h-4">
-        {sources.map((source) => {
-          const start = sourceStarts.find((item) => item.key === source.key)?.start ?? 0;
-          const alertsVisible = source.key !== "alerts" || activeSource.key === "alerts";
+        {sentiments.map((sentiment) => {
+          const start = sourceStarts.find((item) => item.key === sentiment.key)?.start ?? 0;
+          const alertsVisible = sentiment.key !== "alerts" || activeSource.key === "alerts";
 
           return (
             <button
-              key={source.key}
+              key={sentiment.key}
               type="button"
-              onMouseEnter={() => setActiveSource(source)}
-              onFocus={() => setActiveSource(source)}
+              onMouseEnter={() => setActiveSource(sentiment)}
+              onFocus={() => setActiveSource(sentiment)}
               className={`absolute text-[10px] font-semibold uppercase tracking-[0.08em] transition-colors ${
-                activeSource.key === source.key ? "text-[#4B5563]" : "text-[#9CA3AF]"
+                activeSource.key === sentiment.key ? "text-[#4B5563]" : "text-[#9CA3AF]"
               } ${alertsVisible ? "opacity-100" : "opacity-0"}`}
               style={{ left: `${start}%` }}
             >
-              {source.label}
+              {sentiment.label}
             </button>
           );
         })}
@@ -172,18 +188,20 @@ export default function StatsRow() {
       />
       <StatCard
         label="Risk Score"
-        value="18"
+        value="57"
         suffix="/100"
-        change={2.1}
-        changeType="negative"
+        change={2.1} // say it went down by 2.1 points, which is a good thing!
+        changeType="negative" // for arrow direction, but we'll force the colors to be positive since a decrease in risk is good
+        bg_color_forced="#EAF8F1" // light green background for positive change
+        text_color_forced="#159A62" // green text for positive change
       />
       <StatCard
         label="Total Mentions Today"
         value="14,208"
-        change={12.5}
-        changeType="positive"
+        change={12.5} 
+        changeType="negative"
       />
-      <SourcesCard />
+      <SentimentCard />
     </div>
   );
 }

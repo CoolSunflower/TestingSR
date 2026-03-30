@@ -2,6 +2,8 @@ import { useState } from "react";
 import {
   AreaChart,
   Area,
+  BarChart,
+  Bar,
   XAxis,
   YAxis,
   Tooltip,
@@ -10,37 +12,62 @@ import {
 } from "recharts";
 import { SlidersHorizontal } from "lucide-react";
 
-const weekData = [
-  { day: "MON", mentions: 3200 },
-  { day: "TUE", mentions: 4100 },
-  { day: "WED", mentions: 5800 },
-  { day: "THU", mentions: 7200 },
-  { day: "FRI", mentions: 9400 },
-  { day: "SAT", mentions: 13800 },
-  { day: "SUN", mentions: 14208 },
-];
+// Toggle between 'bar' and 'area' to switch chart types
+const CHART_TYPE: "bar" | "area" = "area";
 
-const twoWeekData = [
-  { day: "MON", mentions: 1800 },
-  { day: "TUE", mentions: 2200 },
-  { day: "WED", mentions: 3400 },
-  { day: "THU", mentions: 4100 },
-  { day: "FRI", mentions: 5600 },
-  { day: "SAT", mentions: 7200 },
-  { day: "SUN", mentions: 8900 },
-  { day: "MON", mentions: 9400 },
-  { day: "TUE", mentions: 10200 },
-  { day: "WED", mentions: 11600 },
-  { day: "THU", mentions: 12400 },
-  { day: "FRI", mentions: 12900 },
-  { day: "SAT", mentions: 13800 },
-  { day: "SUN", mentions: 14208 },
-];
+function generateSocialData(days = 7) {
+  const data = [];
 
-const monthData = Array.from({ length: 30 }, (_, i) => ({
-  day: `D${i + 1}`,
-  mentions: Math.floor(800 + (i / 29) * 13400 + Math.sin(i * 0.5) * 1200),
-}));
+  for (let i = 0; i < days; i++) {
+    // Base trend (slow growth, but not boring linear)
+    const trend = 800 + (i / (days - 1)) * 12000;
+
+    // Weekly cycle (weekend spikes)
+    const weeklyCycle = Math.sin((i % 7) * (Math.PI / 3.5)) * 2500;
+
+    // Random noise (because reality isn’t Excel)
+    const noise = (Math.random() - 0.5) * 1500;
+
+    // Occasional spikes (viral moments, chaos, bad decisions)
+    const spike = Math.random() > 0.9 ? Math.random() * 4000 : 0;
+
+    // Plateau effect (flatten some regions)
+    const plateau =
+      i % 6 === 2 || i % 6 === 3
+        ? -Math.abs(Math.sin(i) * 1000)
+        : 0;
+
+    const mentions = Math.max(
+      500,
+      Math.floor(trend + weeklyCycle + noise + spike + plateau)
+    );
+
+    // Sentiment distribution (not perfectly proportional)
+    const positiveRatio = 0.55 + Math.sin(i * 0.3) * 0.1;
+    const neutralRatio = 0.30 + Math.cos(i * 0.2) * 0.05;
+    const negativeRatio = 1 - positiveRatio - neutralRatio;
+
+    const positive = Math.floor(mentions * positiveRatio);
+    const neutral = Math.floor(mentions * neutralRatio);
+    const negative = mentions - positive - neutral;
+
+    data.push({
+      day: days <= 14
+        ? ["MON","TUE","WED","THU","FRI","SAT","SUN"][i % 7]
+        : `D${i + 1}`,
+      mentions,
+      positive,
+      neutral,
+      negative,
+    });
+  }
+
+  return data;
+}
+
+const weekData = generateSocialData(7);
+const twoWeekData = generateSocialData(14);
+const monthData = generateSocialData(30);
 
 const periodData: Record<string, typeof weekData> = {
   "7d": weekData,
@@ -53,12 +80,13 @@ interface CustomDotProps {
   cy?: number;
   index?: number;
   dataLength?: number;
+  color?: string;
 }
 
-function CustomDot({ cx, cy, index, dataLength }: CustomDotProps) {
+function CustomDot({ cx, cy, index, dataLength, color }: CustomDotProps) {
   if (index !== (dataLength ?? 0) - 1) return null;
   return (
-    <circle cx={cx} cy={cy} r={5} fill="#3B82F6" stroke="white" strokeWidth={2} />
+    <circle cx={cx} cy={cy} r={5} fill={color} stroke="white" strokeWidth={2} />
   );
 }
 
@@ -68,7 +96,7 @@ export default function MentionsChart() {
 
   return (
     <div className="bg-white rounded-xl border border-gray-100 p-5 flex flex-col">
-      <div className="flex items-center justify-between mb-5">
+      <div className="flex items-center justify-between mb-4">
         <h2 className="font-semibold text-gray-900 text-[17px]">Mentions Over Time</h2>
         <div className="flex items-center gap-2">
           {["7d", "14d", "30d"].map((p) => (
@@ -91,60 +119,179 @@ export default function MentionsChart() {
         </div>
       </div>
 
+      {/* Legend */}
+      <div className="flex items-center gap-5 mb-5 pb-4 border-b border-gray-100">
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-3 rounded-sm bg-[#10B981]"></div>
+          <span className="text-xs font-medium text-gray-600">Positive</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-3 rounded-sm bg-[#F59E0B]"></div>
+          <span className="text-xs font-medium text-gray-600">Neutral</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-3 rounded-sm bg-[#EF4444]"></div>
+          <span className="text-xs font-medium text-gray-600">Negative</span>
+        </div>
+      </div>
+
       <div className="flex-1 min-h-[260px] lg:min-h-[300px]">
         <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={data} margin={{ top: 8, right: 6, left: -20, bottom: 6 }}>
-            <defs>
-              <linearGradient id="mentionsGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#3B82F6" stopOpacity={0.15} />
-                <stop offset="100%" stopColor="#3B82F6" stopOpacity={0.01} />
-              </linearGradient>
-            </defs>
-            <CartesianGrid stroke="#F3F4F6" strokeDasharray="0" vertical={false} />
-            <XAxis
-              dataKey="day"
-              tick={{ fontSize: 11, fill: "#9CA3AF", fontFamily: "IBM Plex Sans" }}
-              axisLine={false}
-              tickLine={false}
-              dy={8}
-            />
-            <YAxis
-              tick={{ fontSize: 11, fill: "#9CA3AF", fontFamily: "IBM Plex Sans" }}
-              axisLine={false}
-              tickLine={false}
-              tickFormatter={(v) => (v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v)}
-            />
-            <Tooltip
-              contentStyle={{
-                background: "#111827",
-                border: "none",
-                borderRadius: "8px",
-                color: "white",
-                fontSize: "12px",
-                padding: "8px 12px",
-              }}
-              labelStyle={{ color: "#9CA3AF", marginBottom: "2px" }}
-              formatter={(val: number) => [val.toLocaleString(), "Mentions"]}
-              cursor={{ stroke: "#3B82F6", strokeWidth: 1, strokeDasharray: "4 4" }}
-            />
-            <Area
-              type="monotone"
-              dataKey="mentions"
-              stroke="#3B82F6"
-              strokeWidth={2}
-              fill="url(#mentionsGradient)"
-              dot={(props) => (
-                <CustomDot
-                  key={props.index}
-                  cx={props.cx}
-                  cy={props.cy}
-                  index={props.index}
-                  dataLength={data.length}
-                />
-              )}
-              activeDot={{ r: 5, fill: "#3B82F6", stroke: "white", strokeWidth: 2 }}
-            />
-          </AreaChart>
+          {CHART_TYPE === "bar" ? (
+            <BarChart
+              data={data}
+              margin={{ top: 8, right: 6, left: -20, bottom: 6 }}
+              barCategoryGap="10%"
+              barGap={0}
+            >
+              <CartesianGrid stroke="#F3F4F6" strokeDasharray="0" vertical={false} />
+              <XAxis
+                dataKey="day"
+                tick={{ fontSize: 11, fill: "#9CA3AF", fontFamily: "IBM Plex Sans" }}
+                axisLine={false}
+                tickLine={false}
+                dy={8}
+              />
+              <YAxis
+                domain={['auto', 'auto']}
+                tick={{ fontSize: 11, fill: "#9CA3AF", fontFamily: "IBM Plex Sans" }}
+                axisLine={false}
+                tickLine={false}
+                tickFormatter={(v) => (v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v)}
+              />
+              <Tooltip
+                contentStyle={{
+                  background: "#111827",
+                  border: "none",
+                  borderRadius: "8px",
+                  color: "white",
+                  fontSize: "12px",
+                  padding: "12px 14px",
+                }}
+                labelStyle={{ color: "#9CA3AF", marginBottom: "6px", fontWeight: 500 }}
+                cursor={{ fill: "rgba(0,0,0,0.03)" }}
+                formatter={(val: number, name: string) => {
+                  const label =
+                    name === "positive"
+                      ? "Positive"
+                      : name === "negative"
+                      ? "Negative"
+                      : "Neutral";
+                  return [val.toLocaleString(), label];
+                }}
+              />
+              <Bar dataKey="negative" stackId="sentiment" fill="#EF4444" />
+              <Bar dataKey="neutral" stackId="sentiment" fill="#F59E0B" />
+              <Bar dataKey="positive" stackId="sentiment" fill="#10B981" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          ) : (
+            <AreaChart data={data} margin={{ top: 8, right: 6, left: -20, bottom: 6 }}>
+              <defs>
+                <linearGradient id="positiveGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#10B981" stopOpacity={0.2} />
+                  <stop offset="100%" stopColor="#10B981" stopOpacity={0.01} />
+                </linearGradient>
+                <linearGradient id="neutralGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#F59E0B" stopOpacity={0.2} />
+                  <stop offset="100%" stopColor="#F59E0B" stopOpacity={0.01} />
+                </linearGradient>
+                <linearGradient id="negativeGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#EF4444" stopOpacity={0.2} />
+                  <stop offset="100%" stopColor="#EF4444" stopOpacity={0.01} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid stroke="#F3F4F6" strokeDasharray="0" vertical={false} />
+              <XAxis
+                dataKey="day"
+                tick={{ fontSize: 11, fill: "#9CA3AF", fontFamily: "IBM Plex Sans" }}
+                axisLine={false}
+                tickLine={false}
+                dy={8}
+              />
+              <YAxis
+                domain={['auto', 'auto']}
+                tick={{ fontSize: 11, fill: "#9CA3AF", fontFamily: "IBM Plex Sans" }}
+                axisLine={false}
+                tickLine={false}
+                tickFormatter={(v) => (v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v)}
+              />
+              <Tooltip
+                contentStyle={{
+                  background: "#111827",
+                  border: "none",
+                  borderRadius: "8px",
+                  color: "white",
+                  fontSize: "12px",
+                  padding: "12px 14px",
+                }}
+                labelStyle={{ color: "#9CA3AF", marginBottom: "6px", fontWeight: 500 }}
+                cursor={{ stroke: "#9CA3AF", strokeWidth: 1, strokeDasharray: "4 4" }}
+                formatter={(val: number, name: string) => {
+                  const label =
+                    name === "positive"
+                      ? "Positive"
+                      : name === "negative"
+                      ? "Negative"
+                      : "Neutral";
+                  return [val.toLocaleString(), label];
+                }}
+              />
+              <Area
+                type="monotone"
+                dataKey="positive"
+                stroke="#10B981"
+                strokeWidth={2.5}
+                fill="url(#positiveGradient)"
+                dot={(props) => (
+                  <CustomDot
+                    key={props.index}
+                    cx={props.cx}
+                    cy={props.cy}
+                    index={props.index}
+                    dataLength={data.length}
+                    color="#10B981"
+                  />
+                )}
+                activeDot={{ r: 5, fill: "#10B981", stroke: "white", strokeWidth: 2 }}
+              />
+              <Area
+                type="monotone"
+                dataKey="neutral"
+                stroke="#F59E0B"
+                strokeWidth={2.5}
+                fill="url(#neutralGradient)"
+                dot={(props) => (
+                  <CustomDot
+                    key={props.index}
+                    cx={props.cx}
+                    cy={props.cy}
+                    index={props.index}
+                    dataLength={data.length}
+                    color="#F59E0B"
+                  />
+                )}
+                activeDot={{ r: 5, fill: "#F59E0B", stroke: "white", strokeWidth: 2 }}
+              />
+              <Area
+                type="monotone"
+                dataKey="negative"
+                stroke="#EF4444"
+                strokeWidth={2.5}
+                fill="url(#negativeGradient)"
+                dot={(props) => (
+                  <CustomDot
+                    key={props.index}
+                    cx={props.cx}
+                    cy={props.cy}
+                    index={props.index}
+                    dataLength={data.length}
+                    color="#EF4444"
+                  />
+                )}
+                activeDot={{ r: 5, fill: "#EF4444", stroke: "white", strokeWidth: 2 }}
+              />
+            </AreaChart>
+          )}
         </ResponsiveContainer>
       </div>
     </div>

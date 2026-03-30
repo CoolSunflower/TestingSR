@@ -3,6 +3,10 @@ const topics = [
   { label: "Customer Support", count: "6.1k", width: "65%", color: "#93C5FD" },
   { label: "Pricing Update", count: "4.3k", width: "45%", color: "#BFDBFE" },
   { label: "Mobile App", count: "2.8k", width: "28%", color: "#EF4444" },
+  { label: "Pricing Update", count: "4.3k", width: "45%", color: "#BFDBFE" },
+  { label: "Mobile App", count: "2.8k", width: "28%", color: "#EF4444" },
+  { label: "Pricing Update", count: "4.3k", width: "45%", color: "#BFDBFE" },
+  { label: "Mobile App", count: "2.8k", width: "28%", color: "#EF4444" },
 ];
 
 export default function TrendingTopics() {

@@ -1,13 +1,55 @@
 import { Upload, Settings, Zap, Download } from "lucide-react";
 import Navbar from "@/components/Navbar";
+import React, { useState } from "react";
 import StatsRow from "@/components/dashboard/StatsRow";
+import { FilterRow } from "@/components/FilterRow";
+import { DateRange } from "react-day-picker";
 import MentionsChart from "@/components/dashboard/MentionsChart";
-import SentimentDonut from "@/components/dashboard/SentimentDonut";
+import SourcesDonut from "@/components/dashboard/SourcesDonut";
+import SOVDonut from "@/components/dashboard/SOVDonut";
 import TrendingTopics from "@/components/dashboard/TrendingTopics";
 import PriorityTriage from "@/components/dashboard/PriorityTriage";
 import NarrativeDigest from "@/components/dashboard/NarrativeDigest";
 
 export default function Index() {
+  // Filter states
+  const [selectedKeywords, setSelectedKeywords] = useState<string[]>([]);
+  const [dateRange, setDateRange] = useState<DateRange | undefined>();
+  const [selectedSentiment, setSelectedSentiment] = useState<string[]>([]);
+  const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
+
+  // Mock data for dropdowns
+  const keywordOptions = [
+    { label: "Product Launch", value: "product-launch" },
+    { label: "Customer Service", value: "customer-service" },
+    { label: "Pricing", value: "pricing" },
+    { label: "Quality", value: "quality" },
+  ];
+
+  const sentimentOptions = [
+    { label: "Positive", value: "positive" },
+    { label: "Neutral", value: "neutral" },
+    { label: "Negative", value: "negative" },
+  ];
+
+  const platformOptions = [
+    { label: "Twitter", value: "twitter" },
+    { label: "Facebook", value: "facebook" },
+    { label: "Instagram", value: "instagram" },
+    { label: "LinkedIn", value: "linkedin" },
+    { label: "Reddit", value: "reddit" },
+  ];
+
+  const handleApplyFilters = () => {
+    console.log("Applying filters:", {
+      keywords: selectedKeywords,
+      dateRange,
+      sentiment: selectedSentiment,
+      platforms: selectedPlatforms,
+    });
+    // TODO: Implement filter logic here
+  };
+
   return (
     <div className="min-h-screen bg-[#F5F6F8]">
       <Navbar />
@@ -43,7 +85,7 @@ export default function Index() {
               <Zap size={14} className="text-yellow-500" />
               Generate brief
             </button>
-            <button className="flex items-center gap-2 px-5 sm:px-6 py-2.5 rounded-xl bg-black text-white text-sm font-semibold hover:bg-[#10131A] transition-colors shadow-[0_8px_16px_rgba(0,0,0,0.16)] shrink-0">
+            <button className="flex items-center gap-2 px-5 sm:px-6 py-2.5 rounded-xl bg-black text-white text-sm font-semibold hover:bg-[#10131A] transition-colors shrink-0">
               <Download size={14} />
               Download today's report
             </button>
@@ -53,15 +95,34 @@ export default function Index() {
         {/* Stats row */}
         <StatsRow />
 
+        {/* Filter Row */}
+        <FilterRow
+          keywordOptions={keywordOptions}
+          selectedKeywords={selectedKeywords}
+          onKeywordsChange={setSelectedKeywords}
+          dateRange={dateRange}
+          onDateRangeChange={setDateRange}
+          sentimentOptions={sentimentOptions}
+          selectedSentiment={selectedSentiment}
+          onSentimentChange={setSelectedSentiment}
+          platformOptions={platformOptions}
+          selectedPlatforms={selectedPlatforms}
+          onPlatformsChange={setSelectedPlatforms}
+          onApplyFilters={handleApplyFilters}
+        />
+
         {/* Charts row */}
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-4">
           <MentionsChart />
-          <SentimentDonut />
+          {/* <SentimentDonut /> */}
+          <TrendingTopics />
         </div>
 
         {/* Trending + Priority Triage */}
-        <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-4">
-          <TrendingTopics />
+        <div className="grid grid-cols-1 lg:grid-cols-[300px_300px_1fr]  gap-4">
+          {/* <TrendingTopics /> */}
+          <SourcesDonut />
+          <SOVDonut />
           <PriorityTriage />
         </div>
 
