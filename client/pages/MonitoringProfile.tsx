@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, X, Edit2, Check, Twitter, Facebook, Linkedin, MessageCircle, Globe, ChevronDown } from "lucide-react";
+import { Plus, X, Edit2, Check, Twitter, Facebook, Linkedin, MessageCircle, Globe, ChevronDown, Bell, Mail } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   Select,
@@ -13,6 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { MultiSelect, MultiSelectOption } from "@/components/ui/multi-select";
 
 type Platform = "Reddit" | "X" | "Facebook" | "LinkedIn" | "Web Alerts";
 
@@ -24,12 +25,58 @@ type Keyword = {
   excludedKeywords?: string[];
 };
 
+// Alert Types
+type ScopeMode = "all-keywords" | "specific-keywords";
+
+type TriggerType = 
+  | "volume-spike" 
+  | "sentiment-spike" 
+  | "competitor-overtake"
+  | "share-of-voice-drop"
+  | "competitor-growth";
+
+type Sensitivity = "low" | "medium" | "high";
+
+type Alert = {
+  id: number;
+  scope: ScopeMode;
+  selectedKeywords: string[]; // keyword names when scope is specific
+  trigger: TriggerType;
+  sensitivity: Sensitivity;
+  inAppNotifications: boolean;
+  emailNotifications: boolean;
+  name: string; // auto-generated
+};
+
 const PLATFORM_OPTIONS: Platform[] = ["Reddit", "X", "Facebook", "LinkedIn", "Web Alerts"];
 
 const LANGUAGE_OPTIONS = [
   "English", "Spanish", "French", "German", "Italian", "Portuguese",
   "Russian", "Japanese", "Chinese", "Korean", "Arabic", "Hindi"
 ];
+
+// Alert Name Generator
+function generateAlertName(
+  scope: ScopeMode,
+  selectedKeywords: string[],
+  trigger: TriggerType
+): string {
+  const scopeText = scope === "all-keywords" 
+    ? "across all keywords" 
+    : selectedKeywords.length === 1
+    ? `for ${selectedKeywords[0]}`
+    : `for ${selectedKeywords.slice(0, 2).join(" + ")}${selectedKeywords.length > 2 ? ` +${selectedKeywords.length - 2} more` : ""}`;
+
+  const triggerText: Record<TriggerType, string> = {
+    "volume-spike": "Spike in mentions",
+    "sentiment-spike": "Spike in negative sentiment",
+    "competitor-overtake": "Competitors overtook you",
+    "share-of-voice-drop": "Share of voice drop",
+    "competitor-growth": "Competitors growing faster"
+  };
+
+  return `${triggerText[trigger]} ${scopeText}`;
+}
 
 // Custom Reddit Icon Component
 const RedditIcon = ({ size = 16, className = "" }: { size?: number; className?: string }) => (
@@ -54,23 +101,7 @@ const PLATFORM_COLORS = {
   "Web Alerts": "text-purple-600",
 };
 
-function KeywordSetup() {
-  const [keywords, setKeywords] = useState<Keyword[]>([
-    {
-      id: 1,
-      keyword: "brand reputation",
-      platforms: ["Reddit", "X", "Web Alerts"],
-      excludedLanguages: ["Spanish", "French"],
-      excludedKeywords: ["spam", "advertisement"]
-    },
-    {
-      id: 2,
-      keyword: "customer feedback",
-      platforms: ["Facebook", "LinkedIn"],
-      excludedLanguages: [],
-      excludedKeywords: []
-    },
-  ]);
+function KeywordSetup({ keywords, setKeywords }: { keywords: Keyword[]; setKeywords: React.Dispatch<React.SetStateAction<Keyword[]>> }) {
   const [newKeyword, setNewKeyword] = useState("");
   const [selectedPlatforms, setSelectedPlatforms] = useState<Platform[]>([]);
   const [excludedLanguages, setExcludedLanguages] = useState<string[]>([]);
@@ -810,7 +841,735 @@ function ExcludedWords() {
   );
 }
 
+function AlertsSetup({ keywords }: { keywords: Keyword[] }) {
+  // Alerts list
+  const [alerts, setAlerts] = useState<Alert[]>([]);
+
+  // Creation form state
+  const [scope, setScope] = useState<ScopeMode | "">("");
+  const [selectedKeywords, setSelectedKeywords] = useState<string[]>([]);
+  const [trigger, setTrigger] = useState<TriggerType | "">("");
+  const [sensitivity, setSensitivity] = useState<Sensitivity>("medium");
+  const [inAppNotifications, setInAppNotifications] = useState(true);
+  const [emailNotifications, setEmailNotifications] = useState(true);
+
+  // Edit state
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editScope, setEditScope] = useState<ScopeMode | "">("");
+  const [editSelectedKeywords, setEditSelectedKeywords] = useState<string[]>([]);
+  const [editTrigger, setEditTrigger] = useState<TriggerType | "">("");
+  const [editSensitivity, setEditSensitivity] = useState<Sensitivity>("medium");
+  const [editInAppNotifications, setEditInAppNotifications] = useState(true);
+  const [editEmailNotifications, setEditEmailNotifications] = useState(true);
+
+  // Validation
+  const isFormValid = () => {
+    if (!trigger) return false;
+    if (scope === "specific-keywords" && selectedKeywords.length === 0) return false;
+    return true;
+  };
+
+  const isEditFormValid = () => {
+    if (!editTrigger) return false;
+    if (editScope === "specific-keywords" && editSelectedKeywords.length === 0) return false;
+    return true;
+  };
+
+  // Create Alert
+  const handleCreateAlert = () => {
+    if (!isFormValid() || !scope || !trigger) return;
+
+    const newAlert: Alert = {
+      id: Date.now(),
+      scope,
+      selectedKeywords: scope === "specific-keywords" ? selectedKeywords : [],
+      trigger,
+      sensitivity,
+      inAppNotifications,
+      emailNotifications,
+      name: generateAlertName(scope, selectedKeywords, trigger),
+    };
+
+    setAlerts([...alerts, newAlert]);
+
+    // Reset form
+    setScope("");
+    setSelectedKeywords([]);
+    setTrigger("");
+    setSensitivity("medium");
+    setInAppNotifications(true);
+    setEmailNotifications(true);
+  };
+
+  // Edit Alert
+  const startEdit = (alert: Alert) => {
+    setEditingId(alert.id);
+    setEditScope(alert.scope);
+    setEditSelectedKeywords(alert.selectedKeywords);
+    setEditTrigger(alert.trigger);
+    setEditSensitivity(alert.sensitivity);
+    setEditInAppNotifications(alert.inAppNotifications);
+    setEditEmailNotifications(alert.emailNotifications);
+  };
+
+  const saveEdit = (id: number) => {
+    if (!isEditFormValid() || !editScope || !editTrigger) return;
+
+    setAlerts(
+      alerts.map((alert) =>
+        alert.id === id
+          ? {
+              ...alert,
+              scope: editScope,
+              selectedKeywords: editScope === "specific-keywords" ? editSelectedKeywords : [],
+              trigger: editTrigger,
+              sensitivity: editSensitivity,
+              inAppNotifications: editInAppNotifications,
+              emailNotifications: editEmailNotifications,
+              name: generateAlertName(editScope, editSelectedKeywords, editTrigger),
+            }
+          : alert
+      )
+    );
+
+    cancelEdit();
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditScope("");
+    setEditSelectedKeywords([]);
+    setEditTrigger("");
+    setEditSensitivity("medium");
+    setEditInAppNotifications(true);
+    setEditEmailNotifications(true);
+  };
+
+  // Delete Alert
+  const handleDelete = (id: number) => {
+    setAlerts(alerts.filter((alert) => alert.id !== id));
+  };
+
+  // Helper: Convert keywords to MultiSelect options
+  const keywordOptions: MultiSelectOption[] = keywords.map((kw) => ({
+    label: kw.keyword,
+    value: kw.keyword,
+  }));
+
+  // Helper: Get trigger display text
+  const getTriggerDisplayText = (triggerType: TriggerType): string => {
+    const triggerMap: Record<TriggerType, string> = {
+      "volume-spike": "Spike in mentions",
+      "sentiment-spike": "Spike in negative sentiment",
+      "competitor-overtake": "Competitors overtake me",
+      "share-of-voice-drop": "My share of voice drops",
+      "competitor-growth": "Competitors grow faster than me",
+    };
+    return triggerMap[triggerType];
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-semibold text-gray-900">Alerts</h2>
+        <Badge variant="secondary" className="bg-gray-100 text-gray-600 border-gray-200">
+          {alerts.length} configured
+        </Badge>
+      </div>
+
+      {/* Add New Alert - Progressive Flow */}
+      <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-visible transition-all duration-300">
+        <div className="p-4">
+          {/* Step 1: Scope Selection */}
+          <div className="space-y-3">
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+              Alert Scope
+            </label>
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  if (scope === "all-keywords") {
+                    setScope("");
+                  } else {
+                    setScope("all-keywords");
+                    setSelectedKeywords([]);
+                  }
+                }}
+                className={cn(
+                  "flex-1 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-300 border-2",
+                  scope === "all-keywords"
+                    ? "bg-gray-900 text-white border-gray-900 shadow-md"
+                    : "bg-white text-gray-700 border-gray-200 hover:border-gray-400 hover:shadow-sm"
+                )}
+              >
+                All Keywords
+                {scope === "all-keywords" && (
+                  <Check size={14} className="inline-block ml-2 animate-in zoom-in duration-200" />
+                )}
+              </button>
+              <button
+                onClick={() => {
+                  if (scope === "specific-keywords") {
+                    setScope("");
+                    setSelectedKeywords([]);
+                  } else {
+                    setScope("specific-keywords");
+                  }
+                }}
+                className={cn(
+                  "flex-1 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-300 border-2",
+                  scope === "specific-keywords"
+                    ? "bg-gray-900 text-white border-gray-900 shadow-md"
+                    : "bg-white text-gray-700 border-gray-200 hover:border-gray-400 hover:shadow-sm"
+                )}
+              >
+                Specific Keywords
+                {scope === "specific-keywords" && (
+                  <Check size={14} className="inline-block ml-2 animate-in zoom-in duration-200" />
+                )}
+              </button>
+            </div>
+          </div>
+
+          {/* Step 1b: Multi-Keyword Selection (if specific scope) */}
+          <div
+            className={cn(
+              "grid transition-all duration-500 ease-out",
+              scope === "specific-keywords"
+                ? "grid-rows-[1fr] opacity-100"
+                : "grid-rows-[0fr] opacity-0"
+            )}
+          >
+            <div className="overflow-hidden">
+              <div className="space-y-3">
+                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  Select Keywords
+                </label>
+                <MultiSelect
+                  options={keywordOptions}
+                  selected={selectedKeywords}
+                  onChange={setSelectedKeywords}
+                  placeholder="Choose keywords to monitor..."
+                  className="h-11"
+                />
+                {selectedKeywords.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {selectedKeywords.map((kw) => (
+                      <Badge
+                        key={kw}
+                        variant="secondary"
+                        className="bg-blue-50 text-blue-700 border-blue-200 text-xs pl-2 pr-1 py-1"
+                      >
+                        {kw}
+                        <button
+                          onClick={() =>
+                            setSelectedKeywords(selectedKeywords.filter((k) => k !== kw))
+                          }
+                          className="ml-1 hover:text-blue-900"
+                        >
+                          <X size={12} />
+                        </button>
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Step 2: Trigger Selection */}
+          <div
+            className={cn(
+              "grid transition-all duration-500 ease-out",
+              scope ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
+            )}
+          >
+            <div className="overflow-hidden">
+              <div className="space-y-3 mt-4">
+                <div className="flex items-center gap-2">
+                  <div className="h-px flex-1 bg-gradient-to-r from-transparent via-gray-200 to-transparent" />
+                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                    Trigger Type
+                  </label>
+                  <div className="h-px flex-1 bg-gradient-to-r from-transparent via-gray-200 to-transparent" />
+                </div>
+                <div className="space-y-3">
+                  {/* Primary Triggers - 2 columns */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <button
+                      onClick={() => setTrigger(trigger === "volume-spike" ? "" : "volume-spike")}
+                      className={cn(
+                        "px-4 py-3 rounded-lg text-sm font-medium text-center transition-all duration-300 border-2",
+                        trigger === "volume-spike"
+                          ? "bg-gray-900 text-white border-gray-900 shadow-md"
+                          : "bg-white text-gray-700 border-gray-200 hover:border-gray-400 hover:shadow-sm"
+                      )}
+                    >
+                      Spike in mentions
+                    </button>
+                    <button
+                      onClick={() => setTrigger(trigger === "sentiment-spike" ? "" : "sentiment-spike")}
+                      className={cn(
+                        "px-4 py-3 rounded-lg text-sm font-medium text-center transition-all duration-300 border-2",
+                        trigger === "sentiment-spike"
+                          ? "bg-gray-900 text-white border-gray-900 shadow-md"
+                          : "bg-white text-gray-700 border-gray-200 hover:border-gray-400 hover:shadow-sm"
+                      )}
+                    >
+                      Spike in negative sentiment
+                    </button>
+                  </div>
+                  
+                  {/* Competitor Triggers Group */}
+                  <div className="space-y-3">
+                    <p className="text-xs text-gray-500 font-medium pl-1">Competitor-related:</p>
+                    {/* Competitor Triggers - 3 columns */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                      <button
+                        onClick={() => setTrigger(trigger === "competitor-overtake" ? "" : "competitor-overtake")}
+                        className={cn(
+                          "px-4 py-3 rounded-lg text-sm font-medium text-center transition-all duration-300 border-2",
+                          trigger === "competitor-overtake"
+                            ? "bg-gray-900 text-white border-gray-900 shadow-md"
+                            : "bg-white text-gray-700 border-gray-200 hover:border-gray-400 hover:shadow-sm"
+                        )}
+                      >
+                        Competitors overtake me
+                      </button>
+                      <button
+                        onClick={() => setTrigger(trigger === "share-of-voice-drop" ? "" : "share-of-voice-drop")}
+                        className={cn(
+                          "px-4 py-3 rounded-lg text-sm font-medium text-center transition-all duration-300 border-2",
+                          trigger === "share-of-voice-drop"
+                            ? "bg-gray-900 text-white border-gray-900 shadow-md"
+                            : "bg-white text-gray-700 border-gray-200 hover:border-gray-400 hover:shadow-sm"
+                        )}
+                      >
+                        My share of voice drops
+                      </button>
+                      <button
+                        onClick={() => setTrigger(trigger === "competitor-growth" ? "" : "competitor-growth")}
+                        className={cn(
+                          "px-4 py-3 rounded-lg text-sm font-medium text-center transition-all duration-300 border-2",
+                          trigger === "competitor-growth"
+                            ? "bg-gray-900 text-white border-gray-900 shadow-md"
+                            : "bg-white text-gray-700 border-gray-200 hover:border-gray-400 hover:shadow-sm"
+                        )}
+                      >
+                        Competitors grow faster than me
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Step 3 & 4: Sensitivity and Delivery */}
+          <div
+            className={cn(
+              "grid transition-all duration-500 ease-out",
+              trigger ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
+            )}
+          >
+            <div className="overflow-hidden">
+              <div className="space-y-4 mt-4">
+                <div className="flex items-center gap-2">
+                  <div className="h-px flex-1 bg-gradient-to-r from-transparent via-gray-200 to-transparent" />
+                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                    Sensitivity &amp; Delivery
+                  </label>
+                  <div className="h-px flex-1 bg-gradient-to-r from-transparent via-gray-200 to-transparent" />
+                </div>
+
+                <div className="grid md:grid-cols-2 gap-4">
+                  {/* Sensitivity */}
+                  <div className="space-y-2">
+                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                      Sensitivity
+                    </label>
+                    <div className="flex gap-2">
+                      {(["low", "medium", "high"] as Sensitivity[]).map((level) => (
+                        <button
+                          key={level}
+                          onClick={() => setSensitivity(level)}
+                          className={cn(
+                            "flex-1 px-3 py-2 rounded-lg text-sm font-medium capitalize transition-all duration-300 border-2",
+                            sensitivity === level
+                              ? "bg-gray-900 text-white border-gray-900"
+                              : "bg-white text-gray-700 border-gray-200 hover:border-gray-400"
+                          )}
+                        >
+                          {level}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Delivery */}
+                  <div className="space-y-2">
+                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                      Notify Via
+                    </label>
+                    <div className="space-y-2">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <Checkbox
+                          checked={inAppNotifications}
+                          onCheckedChange={(checked) => setInAppNotifications(!!checked)}
+                        />
+                        <Bell size={14} className="text-gray-500" />
+                        <span className="text-sm text-gray-700">In-app notifications</span>
+                      </label>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <Checkbox
+                          checked={emailNotifications}
+                          onCheckedChange={(checked) => setEmailNotifications(!!checked)}
+                        />
+                        <Mail size={14} className="text-gray-500" />
+                        <span className="text-sm text-gray-700">Email notifications</span>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Create Button */}
+                {isFormValid() && (
+                  <Button
+                    onClick={handleCreateAlert}
+                    className="w-full bg-gray-900 mt-4 hover:bg-gray-800 text-white transition-all active:scale-95 shadow-sm hover:shadow-md animate-in fade-in slide-in-from-top-2 duration-300"
+                  >
+                    Create Alert
+                  </Button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Alert List */}
+      {alerts.length > 0 && (
+        <div className="space-y-3">
+          {alerts.map((alert) => (
+            <div
+              key={alert.id}
+              className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden transition-all duration-300 hover:shadow-md"
+            >
+              <div className="p-4">
+                {editingId === alert.id ? (
+                  // Edit Mode
+                  <div className="space-y-4">
+                    {/* Edit Scope */}
+                    <div className="space-y-2">
+                      <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                        Alert Scope
+                      </label>
+                      <div className="flex gap-3">
+                        <button
+                          onClick={() => {
+                            setEditScope("all-keywords");
+                            setEditSelectedKeywords([]);
+                          }}
+                          className={cn(
+                            "flex-1 px-4 py-2.5 rounded-lg text-sm font-medium transition-all border-2",
+                            editScope === "all-keywords"
+                              ? "bg-gray-900 text-white border-gray-900"
+                              : "bg-white text-gray-700 border-gray-200 hover:border-gray-400"
+                          )}
+                        >
+                          All Keywords
+                        </button>
+                        <button
+                          onClick={() => setEditScope("specific-keywords")}
+                          className={cn(
+                            "flex-1 px-4 py-2.5 rounded-lg text-sm font-medium transition-all border-2",
+                            editScope === "specific-keywords"
+                              ? "bg-gray-900 text-white border-gray-900"
+                              : "bg-white text-gray-700 border-gray-200 hover:border-gray-400"
+                          )}
+                        >
+                          Specific Keywords
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Edit Keyword Selection */}
+                    {editScope === "specific-keywords" && (
+                      <div className="space-y-2">
+                        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                          Select Keywords
+                        </label>
+                        <MultiSelect
+                          options={keywordOptions}
+                          selected={editSelectedKeywords}
+                          onChange={setEditSelectedKeywords}
+                          placeholder="Choose keywords..."
+                        />
+                        {editSelectedKeywords.length > 0 && (
+                          <div className="flex flex-wrap gap-1.5">
+                            {editSelectedKeywords.map((kw) => (
+                              <Badge
+                                key={kw}
+                                variant="secondary"
+                                className="bg-blue-50 text-blue-700 border-blue-200 text-xs pl-2 pr-1 py-1"
+                              >
+                                {kw}
+                                <button
+                                  onClick={() =>
+                                    setEditSelectedKeywords(
+                                      editSelectedKeywords.filter((k) => k !== kw)
+                                    )
+                                  }
+                                  className="ml-1 hover:text-blue-900"
+                                >
+                                  <X size={12} />
+                                </button>
+                              </Badge>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Edit Trigger */}
+                    <div className="space-y-2">
+                      <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                        Trigger Type
+                      </label>
+                      <Select
+                        value={editTrigger}
+                        onValueChange={(value) => setEditTrigger(value as TriggerType)}
+                      >
+                        <SelectTrigger className="h-10 border-gray-200">
+                          <SelectValue placeholder="Select trigger..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="volume-spike">Spike in mentions</SelectItem>
+                          <SelectItem value="sentiment-spike">
+                            Spike in negative sentiment
+                          </SelectItem>
+                          <SelectItem value="competitor-overtake">
+                            Competitors overtake me
+                          </SelectItem>
+                          <SelectItem value="share-of-voice-drop">
+                            My share of voice drops
+                          </SelectItem>
+                          <SelectItem value="competitor-growth">
+                            Competitors grow faster than me
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Edit Sensitivity & Delivery */}
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                          Sensitivity
+                        </label>
+                        <div className="flex gap-2">
+                          {(["low", "medium", "high"] as Sensitivity[]).map((level) => (
+                            <button
+                              key={level}
+                              onClick={() => setEditSensitivity(level)}
+                              className={cn(
+                                "flex-1 px-3 py-2 rounded-lg text-sm font-medium capitalize transition-all border-2",
+                                editSensitivity === level
+                                  ? "bg-gray-900 text-white border-gray-900"
+                                  : "bg-white text-gray-700 border-gray-200 hover:border-gray-400"
+                              )}
+                            >
+                              {level}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                          Notify Via
+                        </label>
+                        <div className="space-y-2">
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <Checkbox
+                              checked={editInAppNotifications}
+                              onCheckedChange={(checked) =>
+                                setEditInAppNotifications(!!checked)
+                              }
+                            />
+                            <Bell size={14} className="text-gray-500" />
+                            <span className="text-sm text-gray-700">In-app</span>
+                          </label>
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <Checkbox
+                              checked={editEmailNotifications}
+                              onCheckedChange={(checked) =>
+                                setEditEmailNotifications(!!checked)
+                              }
+                            />
+                            <Mail size={14} className="text-gray-500" />
+                            <span className="text-sm text-gray-700">Email</span>
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Save/Cancel */}
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        onClick={() => saveEdit(alert.id)}
+                        disabled={!isEditFormValid()}
+                        className="flex-1 bg-gray-900 hover:bg-gray-800"
+                      >
+                        <Check size={14} className="mr-1" />
+                        Save
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={cancelEdit}
+                        className="flex-1"
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  // Display Mode
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1 space-y-3">
+                      {/* Alert Name */}
+                      <p className="text-[15px] font-semibold text-gray-900">{alert.name}</p>
+
+                      {/* Scope */}
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
+                          Scope:
+                        </span>
+                        {alert.scope === "all-keywords" ? (
+                          <Badge
+                            variant="secondary"
+                            className="bg-purple-50 text-purple-700 border-purple-200 text-[10px] font-medium"
+                          >
+                            All Keywords
+                          </Badge>
+                        ) : (
+                          <>
+                            {alert.selectedKeywords.map((kw) => (
+                              <Badge
+                                key={kw}
+                                variant="secondary"
+                                className="bg-blue-50 text-blue-700 border-blue-200 text-[10px] font-medium"
+                              >
+                                {kw}
+                              </Badge>
+                            ))}
+                          </>
+                        )}
+                      </div>
+
+                      {/* Trigger & Sensitivity */}
+                      <div className="flex items-center gap-3 flex-wrap text-xs text-gray-600">
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-semibold text-gray-500">Trigger:</span>
+                          <span>{getTriggerDisplayText(alert.trigger)}</span>
+                        </div>
+                        <span className="text-gray-300">•</span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-semibold text-gray-500">Sensitivity:</span>
+                          <Badge
+                            variant="secondary"
+                            className={cn(
+                              "text-[10px] font-medium capitalize",
+                              alert.sensitivity === "high" &&
+                                "bg-red-50 text-red-700 border-red-200",
+                              alert.sensitivity === "medium" &&
+                                "bg-yellow-50 text-yellow-700 border-yellow-200",
+                              alert.sensitivity === "low" &&
+                                "bg-green-50 text-green-700 border-green-200"
+                            )}
+                          >
+                            {alert.sensitivity}
+                          </Badge>
+                        </div>
+                      </div>
+
+                      {/* Delivery */}
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
+                          Delivery:
+                        </span>
+                        {alert.inAppNotifications && (
+                          <Badge
+                            variant="secondary"
+                            className="bg-gray-50 text-gray-700 border-gray-200 text-[10px] font-medium flex items-center gap-1"
+                          >
+                            <Bell size={10} />
+                            In-app
+                          </Badge>
+                        )}
+                        {alert.emailNotifications && (
+                          <Badge
+                            variant="secondary"
+                            className="bg-gray-50 text-gray-700 border-gray-200 text-[10px] font-medium flex items-center gap-1"
+                          >
+                            <Mail size={10} />
+                            Email
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex gap-1">
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => startEdit(alert)}
+                        className="h-8 w-8 text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors"
+                      >
+                        <Edit2 size={14} />
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => handleDelete(alert.id)}
+                        className="h-8 w-8 text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors"
+                      >
+                        <X size={14} />
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function MonitoringProfile() {
+  // Shared keywords state for both KeywordSetup and AlertsSetup
+  const [keywords, setKeywords] = useState<Keyword[]>([
+    {
+      id: 1,
+      keyword: "brand reputation",
+      platforms: ["Reddit", "X", "Web Alerts"],
+      excludedLanguages: ["Spanish", "French"],
+      excludedKeywords: ["spam", "advertisement"]
+    },
+    {
+      id: 2,
+      keyword: "customer feedback",
+      platforms: ["Facebook", "LinkedIn"],
+      excludedLanguages: [],
+      excludedKeywords: []
+    },
+  ]);
+
   return (
     <div className="min-h-screen bg-[#F5F6F8]">
       <Navbar />
@@ -861,7 +1620,10 @@ export default function MonitoringProfile() {
         </div>
 
         {/* Keyword Setup */}
-        <KeywordSetup />
+        <KeywordSetup keywords={keywords} setKeywords={setKeywords} />
+
+        {/* Alerts */}
+        <AlertsSetup keywords={keywords} />
 
         {/* Competitor Names */}
         <CompetitorNames />
