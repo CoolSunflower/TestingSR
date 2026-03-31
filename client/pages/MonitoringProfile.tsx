@@ -23,6 +23,7 @@ type Keyword = {
   platforms: Platform[];
   excludedLanguages?: string[];
   excludedKeywords?: string[];
+  alertConfigs?: AlertConfig[];
 };
 
 // Alert Types
@@ -55,6 +56,14 @@ const getTriggerDisplayText = (trigger: TriggerType): string => {
 };
 
 type Sensitivity = "low" | "medium" | "high";
+
+type AlertConfig = {
+  id: string;
+  trigger: TriggerType;
+  sensitivity: Sensitivity;
+  inAppNotifications: boolean;
+  emailNotifications: boolean;
+};
 
 type Alert = {
   id: number;
@@ -120,7 +129,17 @@ const PLATFORM_COLORS = {
   "Web Alerts": "text-purple-600",
 };
 
-function KeywordSetup({ keywords, setKeywords }: { keywords: Keyword[]; setKeywords: React.Dispatch<React.SetStateAction<Keyword[]>> }) {
+function KeywordSetup({ 
+  keywords, 
+  setKeywords, 
+  alerts, 
+  setAlerts 
+}: { 
+  keywords: Keyword[]; 
+  setKeywords: React.Dispatch<React.SetStateAction<Keyword[]>>; 
+  alerts: Alert[]; 
+  setAlerts: React.Dispatch<React.SetStateAction<Alert[]>>; 
+}) {
   const [newKeyword, setNewKeyword] = useState("");
   const [selectedPlatforms, setSelectedPlatforms] = useState<Platform[]>([]);
   const [excludedLanguages, setExcludedLanguages] = useState<string[]>([]);
@@ -133,13 +152,21 @@ function KeywordSetup({ keywords, setKeywords }: { keywords: Keyword[]; setKeywo
   const [editExcludedKeywords, setEditExcludedKeywords] = useState<string[]>([]);
   const [editExcludedKeywordInput, setEditExcludedKeywordInput] = useState("");
 
-  const [createAlert, setCreateAlert] = useState(false);
-
-  // Alert config (mini version)
+  // Alert configuration state
+  const [showAlertMenu, setShowAlertMenu] = useState(false);
   const [alertTriggers, setAlertTriggers] = useState<TriggerType[]>([]);
   const [alertSensitivity, setAlertSensitivity] = useState<Sensitivity>("medium");
-  const [alertInApp, setAlertInApp] = useState(true);
-  const [alertEmail, setAlertEmail] = useState(true);
+  const [alertInAppNotifications, setAlertInAppNotifications] = useState(true);
+  const [alertEmailNotifications, setAlertEmailNotifications] = useState(true);
+  const [savedAlertConfigs, setSavedAlertConfigs] = useState<AlertConfig[]>([]);
+
+  // Edit mode alert configuration state
+  const [editShowAlertMenu, setEditShowAlertMenu] = useState(false);
+  const [editAlertTriggers, setEditAlertTriggers] = useState<TriggerType[]>([]);
+  const [editAlertSensitivity, setEditAlertSensitivity] = useState<Sensitivity>("medium");
+  const [editAlertInAppNotifications, setEditAlertInAppNotifications] = useState(true);
+  const [editAlertEmailNotifications, setEditAlertEmailNotifications] = useState(true);
+  const [editSavedAlertConfigs, setEditSavedAlertConfigs] = useState<AlertConfig[]>([]);
 
   const togglePlatform = (platform: Platform) => {
     setSelectedPlatforms((prev) =>
@@ -187,27 +214,135 @@ function KeywordSetup({ keywords, setKeywords }: { keywords: Keyword[]; setKeywo
     setEditExcludedKeywords(editExcludedKeywords.filter((k) => k !== keyword));
   };
 
+  // Alert configuration helper functions
+  const toggleAlertTrigger = (trigger: TriggerType) => {
+    setAlertTriggers((prev) =>
+      prev.includes(trigger) ? prev.filter((t) => t !== trigger) : [...prev, trigger]
+    );
+  };
+
+  const toggleEditAlertTrigger = (trigger: TriggerType) => {
+    setEditAlertTriggers((prev) =>
+      prev.includes(trigger) ? prev.filter((t) => t !== trigger) : [...prev, trigger]
+    );
+  };
+
+  const saveAlertConfig = () => {
+    if (alertTriggers.length === 0) return;
+
+    const newConfigs: AlertConfig[] = alertTriggers.map(trigger => ({
+      id: `${Date.now()}-${trigger}-${Math.random()}`,
+      trigger,
+      sensitivity: alertSensitivity,
+      inAppNotifications: alertInAppNotifications,
+      emailNotifications: alertEmailNotifications,
+    }));
+
+    setSavedAlertConfigs([...savedAlertConfigs, ...newConfigs]);
+    
+    // Reset alert form
+    setAlertTriggers([]);
+    setAlertSensitivity("medium");
+    setAlertInAppNotifications(true);
+    setAlertEmailNotifications(true);
+    setShowAlertMenu(false);
+  };
+
+  const saveEditAlertConfig = () => {
+    if (editAlertTriggers.length === 0) return;
+
+    const newConfigs: AlertConfig[] = editAlertTriggers.map(trigger => ({
+      id: `${Date.now()}-${trigger}-${Math.random()}`,
+      trigger,
+      sensitivity: editAlertSensitivity,
+      inAppNotifications: editAlertInAppNotifications,
+      emailNotifications: editAlertEmailNotifications,
+    }));
+
+    setEditSavedAlertConfigs([...editSavedAlertConfigs, ...newConfigs]);
+    
+    // Reset alert form
+    setEditAlertTriggers([]);
+    setEditAlertSensitivity("medium");
+    setEditAlertInAppNotifications(true);
+    setEditAlertEmailNotifications(true);
+    setEditShowAlertMenu(false);
+  };
+
+  const removeAlertConfig = (configId: string) => {
+    setSavedAlertConfigs(savedAlertConfigs.filter(c => c.id !== configId));
+  };
+
+  const removeEditAlertConfig = (configId: string) => {
+    setEditSavedAlertConfigs(editSavedAlertConfigs.filter(c => c.id !== configId));
+  };
+
   const handleAdd = () => {
     if (newKeyword.trim() && selectedPlatforms.length > 0) {
-      setKeywords([
-        ...keywords,
-        {
-          id: Date.now(),
-          keyword: newKeyword.trim(),
-          platforms: selectedPlatforms,
-          excludedLanguages,
-          excludedKeywords,
-        },
-      ]);
+      const newKeywordObj: Keyword = {
+        id: Date.now(),
+        keyword: newKeyword.trim(),
+        platforms: selectedPlatforms,
+        excludedLanguages,
+        excludedKeywords,
+        alertConfigs: savedAlertConfigs.length > 0 ? savedAlertConfigs : undefined,
+      };
+
+      setKeywords([...keywords, newKeywordObj]);
+
+      // Create alerts for this keyword if alertConfigs exist
+      if (savedAlertConfigs.length > 0) {
+        const newAlerts: Alert[] = savedAlertConfigs.map(config => ({
+          id: Date.now() + Math.random(),
+          scope: "specific-keywords" as ScopeMode,
+          selectedKeywords: [newKeyword.trim()],
+          trigger: config.trigger,
+          sensitivity: config.sensitivity,
+          inAppNotifications: config.inAppNotifications,
+          emailNotifications: config.emailNotifications,
+          name: generateAlertName("specific-keywords", [newKeyword.trim()], config.trigger),
+        }));
+        setAlerts([...alerts, ...newAlerts]);
+      }
+
+      // Reset form
       setNewKeyword("");
       setSelectedPlatforms([]);
       setExcludedLanguages([]);
       setExcludedKeywords([]);
       setExcludedKeywordInput("");
+      setSavedAlertConfigs([]);
+      setShowAlertMenu(false);
     }
   };
 
   const handleDelete = (id: number) => {
+    const keywordToDelete = keywords.find(k => k.id === id);
+    if (keywordToDelete) {
+      // Remove alerts that reference this keyword
+      setAlerts(alerts.filter(alert => {
+        if (alert.scope === "specific-keywords") {
+          // Remove the keyword from alert's selectedKeywords
+          const remainingKeywords = alert.selectedKeywords.filter(kw => kw !== keywordToDelete.keyword);
+          // If no keywords left, delete the alert
+          return remainingKeywords.length > 0;
+        }
+        // Keep all-keywords scope alerts
+        return true;
+      }).map(alert => {
+        // Update selectedKeywords for remaining alerts
+        if (alert.scope === "specific-keywords" && alert.selectedKeywords.includes(keywordToDelete.keyword)) {
+          return {
+            ...alert,
+            selectedKeywords: alert.selectedKeywords.filter(kw => kw !== keywordToDelete.keyword),
+            name: generateAlertName(alert.scope, alert.selectedKeywords.filter(kw => kw !== keywordToDelete.keyword), alert.trigger),
+          };
+        }
+        return alert;
+      }));
+    }
+    
+    // Delete the keyword
     setKeywords(keywords.filter((k) => k.id !== id));
   };
 
@@ -218,10 +353,15 @@ function KeywordSetup({ keywords, setKeywords }: { keywords: Keyword[]; setKeywo
     setEditExcludedLanguages(keyword.excludedLanguages || []);
     setEditExcludedKeywords(keyword.excludedKeywords || []);
     setEditExcludedKeywordInput("");
+    setEditSavedAlertConfigs(keyword.alertConfigs || []);
   };
 
   const saveEdit = (id: number) => {
     if (editKeyword.trim() && editPlatforms.length > 0) {
+      const oldKeyword = keywords.find(k => k.id === id);
+      const oldKeywordName = oldKeyword?.keyword || "";
+
+      // Update keyword
       setKeywords(
         keywords.map((k) =>
           k.id === id
@@ -231,16 +371,46 @@ function KeywordSetup({ keywords, setKeywords }: { keywords: Keyword[]; setKeywo
                 platforms: editPlatforms,
                 excludedLanguages: editExcludedLanguages,
                 excludedKeywords: editExcludedKeywords,
+                alertConfigs: editSavedAlertConfigs.length > 0 ? editSavedAlertConfigs : undefined,
               }
             : k
         )
       );
+
+      // Delete old alerts associated with this keyword
+      const updatedAlerts = alerts.filter(alert => {
+        if (alert.scope === "specific-keywords" && alert.selectedKeywords.includes(oldKeywordName)) {
+          return false;
+        }
+        return true;
+      });
+
+      // Create new alerts if alertConfigs exist
+      if (editSavedAlertConfigs.length > 0) {
+        const newAlerts: Alert[] = editSavedAlertConfigs.map(config => ({
+          id: Date.now() + Math.random(),
+          scope: "specific-keywords" as ScopeMode,
+          selectedKeywords: [editKeyword.trim()],
+          trigger: config.trigger,
+          sensitivity: config.sensitivity,
+          inAppNotifications: config.inAppNotifications,
+          emailNotifications: config.emailNotifications,
+          name: generateAlertName("specific-keywords", [editKeyword.trim()], config.trigger),
+        }));
+        setAlerts([...updatedAlerts, ...newAlerts]);
+      } else {
+        setAlerts(updatedAlerts);
+      }
+
+      // Reset edit state
       setEditingId(null);
       setEditKeyword("");
       setEditPlatforms([]);
       setEditExcludedLanguages([]);
       setEditExcludedKeywords([]);
       setEditExcludedKeywordInput("");
+      setEditSavedAlertConfigs([]);
+      setEditShowAlertMenu(false);
     }
   };
 
@@ -251,6 +421,8 @@ function KeywordSetup({ keywords, setKeywords }: { keywords: Keyword[]; setKeywo
     setEditExcludedLanguages([]);
     setEditExcludedKeywords([]);
     setEditExcludedKeywordInput("");
+    setEditSavedAlertConfigs([]);
+    setEditShowAlertMenu(false);
   };
 
   return (
@@ -345,7 +517,7 @@ function KeywordSetup({ keywords, setKeywords }: { keywords: Keyword[]; setKeywo
                 : "max-h-0 opacity-0 mt-0"
             )}
           >
-            <div className="overflow-hidden">
+            <div className="overflow-visible">
               <div className="space-y-4 pt-2">
                 <div className="flex items-center gap-2">
                   <div className="h-px flex-1 bg-gradient-to-r from-transparent via-gray-200 to-transparent" />
@@ -452,27 +624,131 @@ function KeywordSetup({ keywords, setKeywords }: { keywords: Keyword[]; setKeywo
                     )}
                   </div>
 
+                  {/* Alert Setup */}
                   <div className="space-y-2">
                     <label className="text-xs font-medium text-gray-600">
                       Alert Setup
                     </label>
 
-                    <button
-                      onClick={() => setCreateAlert(!createAlert)}
-                      className={cn(
-                        "h-10 w-full flex items-center justify-between px-4 py-3 rounded-lg border-2 text-sm font-medium transition-all duration-300",
-                        createAlert
-                          ? "bg-gray-900 text-white border-gray-900 shadow-md"
-                          : "bg-white text-gray-700 border-gray-200 hover:border-gray-400"
-                      )}
-                    >
-                      <span>Create Alert</span>
+                    <div className="relative">
+                      <button
+                        onClick={() => setShowAlertMenu(!showAlertMenu)}
+                        className={cn(
+                          "h-10 w-full flex items-center justify-between px-4 py-3 rounded-lg border-2 text-sm font-medium transition-all duration-300",
+                          showAlertMenu
+                            ? "bg-gray-900 text-white border-gray-900 shadow-md"
+                            : "bg-white text-gray-700 border-gray-200 hover:border-gray-400"
+                        )}
+                      >
+                        <span className="flex items-center gap-2">
+                          <Bell size={14} />
+                          Create Alert
+                        </span>
+                        <ChevronDown size={16} className={cn("transition-transform", showAlertMenu && "rotate-180")} />
+                      </button>
 
-                      {createAlert && (
-                        <Check size={16} className="animate-in zoom-in duration-200" />
+                      {/* Alert Configuration Menu */}
+                      {showAlertMenu && (
+                        <div className="absolute z-10 mt-2 w-full bg-white border border-gray-200 rounded-lg shadow-lg p-4 space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
+                          {/* Trigger Selection */}
+                          <div className="space-y-2">
+                            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                              Trigger Type
+                            </label>
+                            <div className="space-y-2">
+                              {ALL_TRIGGERS.map((trigger) => (
+                                <label key={trigger} className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-2 rounded transition-colors">
+                                  <Checkbox
+                                    checked={alertTriggers.includes(trigger)}
+                                    onCheckedChange={() => toggleAlertTrigger(trigger)}
+                                  />
+                                  <span className="text-sm text-gray-700">{getTriggerDisplayText(trigger)}</span>
+                                </label>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Sensitivity */}
+                          <div className="space-y-2">
+                            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                              Sensitivity
+                            </label>
+                            <div className="flex gap-2">
+                              {(["low", "medium", "high"] as Sensitivity[]).map((level) => (
+                                <button
+                                  key={level}
+                                  onClick={() => setAlertSensitivity(level)}
+                                  className={cn(
+                                    "flex-1 px-3 py-2 rounded-lg text-sm font-medium capitalize transition-all duration-300 border-2",
+                                    alertSensitivity === level
+                                      ? "bg-gray-900 text-white border-gray-900"
+                                      : "bg-white text-gray-700 border-gray-200 hover:border-gray-400"
+                                  )}
+                                >
+                                  {level}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Delivery Options */}
+                          <div className="space-y-2">
+                            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                              Notify Via
+                            </label>
+                            <div className="space-y-2">
+                              <label className="flex items-center gap-2 cursor-pointer">
+                                <Checkbox
+                                  checked={alertInAppNotifications}
+                                  onCheckedChange={(checked) => setAlertInAppNotifications(!!checked)}
+                                />
+                                <Bell size={14} className="text-gray-500" />
+                                <span className="text-sm text-gray-700">In-app notifications</span>
+                              </label>
+                              <label className="flex items-center gap-2 cursor-pointer">
+                                <Checkbox
+                                  checked={alertEmailNotifications}
+                                  onCheckedChange={(checked) => setAlertEmailNotifications(!!checked)}
+                                />
+                                <Mail size={14} className="text-gray-500" />
+                                <span className="text-sm text-gray-700">Email notifications</span>
+                              </label>
+                            </div>
+                          </div>
+
+                          {/* Save Button */}
+                          <Button
+                            onClick={saveAlertConfig}
+                            disabled={alertTriggers.length === 0}
+                            className="w-full bg-gray-900 hover:bg-gray-800 text-white transition-all active:scale-95"
+                          >
+                            Save Alert Configuration
+                          </Button>
+                        </div>
                       )}
-                    </button>
-                  </div>                
+                    </div>
+
+                    {/* Saved Alert Configs as Badges */}
+                    {savedAlertConfigs.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 animate-in fade-in duration-300">
+                        {savedAlertConfigs.map((config) => (
+                          <Badge
+                            key={config.id}
+                            variant="secondary"
+                            className="bg-blue-50 text-blue-700 border-blue-200 text-xs pl-2 pr-1 py-1 hover:bg-blue-100 transition-colors"
+                          >
+                            {getTriggerDisplayText(config.trigger)} • {config.sensitivity}
+                            <button
+                              onClick={() => removeAlertConfig(config.id)}
+                              className="ml-1 hover:text-blue-900 transition-colors"
+                            >
+                              <X size={12} />
+                            </button>
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -622,6 +898,133 @@ function KeywordSetup({ keywords, setKeywords }: { keywords: Keyword[]; setKeywo
                               <button
                                 onClick={() => removeEditExcludedKeyword(kw)}
                                 className="ml-1 hover:text-red-900"
+                              >
+                                <X size={12} />
+                              </button>
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Edit Alert Setup */}
+                    <div className="space-y-2">
+                      <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                        Alert Setup
+                      </label>
+
+                      <div className="relative">
+                        <button
+                          onClick={() => setEditShowAlertMenu(!editShowAlertMenu)}
+                          className={cn(
+                            "h-10 w-full flex items-center justify-between px-4 py-3 rounded-lg border-2 text-sm font-medium transition-all duration-300",
+                            editShowAlertMenu
+                              ? "bg-gray-900 text-white border-gray-900 shadow-md"
+                              : "bg-white text-gray-700 border-gray-200 hover:border-gray-400"
+                          )}
+                        >
+                          <span className="flex items-center gap-2">
+                            <Bell size={14} />
+                            Create Alert
+                          </span>
+                          <ChevronDown size={16} className={cn("transition-transform", editShowAlertMenu && "rotate-180")} />
+                        </button>
+
+                        {/* Edit Alert Configuration Menu */}
+                        {editShowAlertMenu && (
+                          // <div className="absolute z-10 mt-2 w-full bg-white border border-gray-200 rounded-lg shadow-lg p-4 space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
+                          <div className="mt-3 w-full bg-white border border-gray-200 rounded-lg shadow-sm p-4 space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
+                              {/* Trigger Selection */}
+                            <div className="space-y-2">
+                              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                                Trigger Type
+                              </label>
+                              <div className="space-y-2">
+                                {ALL_TRIGGERS.map((trigger) => (
+                                  <label key={trigger} className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-2 rounded transition-colors">
+                                    <Checkbox
+                                      checked={editAlertTriggers.includes(trigger)}
+                                      onCheckedChange={() => toggleEditAlertTrigger(trigger)}
+                                    />
+                                    <span className="text-sm text-gray-700">{getTriggerDisplayText(trigger)}</span>
+                                  </label>
+                                ))}
+                              </div>
+                            </div>
+
+                            {/* Sensitivity */}
+                            <div className="space-y-2">
+                              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                                Sensitivity
+                              </label>
+                              <div className="flex gap-2">
+                                {(["low", "medium", "high"] as Sensitivity[]).map((level) => (
+                                  <button
+                                    key={level}
+                                    onClick={() => setEditAlertSensitivity(level)}
+                                    className={cn(
+                                      "flex-1 px-3 py-2 rounded-lg text-sm font-medium capitalize transition-all duration-300 border-2",
+                                      editAlertSensitivity === level
+                                        ? "bg-gray-900 text-white border-gray-900"
+                                        : "bg-white text-gray-700 border-gray-200 hover:border-gray-400"
+                                    )}
+                                  >
+                                    {level}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+
+                            {/* Delivery Options */}
+                            <div className="space-y-2">
+                              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                                Notify Via
+                              </label>
+                              <div className="space-y-2">
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                  <Checkbox
+                                    checked={editAlertInAppNotifications}
+                                    onCheckedChange={(checked) => setEditAlertInAppNotifications(!!checked)}
+                                  />
+                                  <Bell size={14} className="text-gray-500" />
+                                  <span className="text-sm text-gray-700">In-app notifications</span>
+                                </label>
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                  <Checkbox
+                                    checked={editAlertEmailNotifications}
+                                    onCheckedChange={(checked) => setEditAlertEmailNotifications(!!checked)}
+                                  />
+                                  <Mail size={14} className="text-gray-500" />
+                                  <span className="text-sm text-gray-700">Email notifications</span>
+                                </label>
+                              </div>
+                            </div>
+
+                            {/* Save Button */}
+                            <Button
+                              onClick={saveEditAlertConfig}
+                              disabled={editAlertTriggers.length === 0}
+                              className="w-full bg-gray-900 hover:bg-gray-800 text-white transition-all active:scale-95"
+                            >
+                              Save Alert Configuration
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Saved Edit Alert Configs as Badges */}
+                      {editSavedAlertConfigs.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 animate-in fade-in duration-300">
+                          {editSavedAlertConfigs.map((config) => (
+                            <Badge
+                              key={config.id}
+                              variant="secondary"
+                              className="bg-blue-50 text-blue-700 border-blue-200 text-xs pl-2 pr-1 py-1 hover:bg-blue-100 transition-colors"
+                            >
+                              {getTriggerDisplayText(config.trigger)} • {config.sensitivity}
+                              <button
+                                onClick={() => removeEditAlertConfig(config.id)}
+                                className="ml-1 hover:text-blue-900 transition-colors"
                               >
                                 <X size={12} />
                               </button>
@@ -890,9 +1293,17 @@ function ExcludedWords() {
   );
 }
 
-function AlertsSetup({ keywords }: { keywords: Keyword[] }) {
-  // Alerts list
-  const [alerts, setAlerts] = useState<Alert[]>([]);
+function AlertsSetup({ 
+  keywords, 
+  alerts, 
+  setAlerts 
+}: { 
+  keywords: Keyword[]; 
+  alerts: Alert[]; 
+  setAlerts: React.Dispatch<React.SetStateAction<Alert[]>>; 
+}) {
+  // Remove local alerts state since it's now passed as prop
+  // const [alerts, setAlerts] = useState<Alert[]>([]);
 
   // Creation form state
   const [scope, setScope] = useState<ScopeMode | "">("");
@@ -1632,6 +2043,9 @@ export default function MonitoringProfile() {
     },
   ]);
 
+  // Shared alerts state
+  const [alerts, setAlerts] = useState<Alert[]>([]);
+
   return (
     <div className="min-h-screen bg-[#F5F6F8]">
       <Navbar />
@@ -1682,10 +2096,10 @@ export default function MonitoringProfile() {
         </div>
 
         {/* Keyword Setup */}
-        <KeywordSetup keywords={keywords} setKeywords={setKeywords} />
+        <KeywordSetup keywords={keywords} setKeywords={setKeywords} alerts={alerts} setAlerts={setAlerts} />
 
         {/* Alerts */}
-        <AlertsSetup keywords={keywords} />
+        <AlertsSetup keywords={keywords} alerts={alerts} setAlerts={setAlerts} />
 
         {/* Competitor Names */}
         <CompetitorNames />
