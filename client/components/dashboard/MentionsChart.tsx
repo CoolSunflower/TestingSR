@@ -98,7 +98,7 @@ function CustomDot({ cx, cy, index, dataLength, color }: CustomDotProps) {
 }
 
 export default function MentionsChart() {
-  const [period, setPeriod] = useState("7d");
+  const [period, setPeriod] = useState("30d");
   const data = periodData[period];
 
   return (
