@@ -14,6 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { MultiSelect, MultiSelectOption } from "@/components/ui/multi-select";
+import Papa from "papaparse";
 
 type Platform = "Reddit" | "X" | "Facebook" | "LinkedIn" | "Web Alerts";
 
@@ -53,6 +54,14 @@ const getTriggerDisplayText = (trigger: TriggerType): string => {
     "competitor-growth": "Competitors grow faster than me",
   };
   return map[trigger];
+};
+
+const ALERT_COLUMN_MAP: Record<string, TriggerType> = {
+  volume_spike: "volume-spike",
+  sentiment_spike: "sentiment-spike",
+  competitor_overtake: "competitor-overtake",
+  share_of_voice_drop: "share-of-voice-drop",
+  competitor_growth: "competitor-growth",
 };
 
 type Sensitivity = "low" | "medium" | "high";
@@ -129,6 +138,9 @@ const PLATFORM_COLORS = {
   "Web Alerts": "text-purple-600",
 };
 
+const VALID_PLATFORMS = PLATFORM_OPTIONS;
+const VALID_TRIGGERS = ALL_TRIGGERS;
+
 function KeywordSetup({ 
   keywords, 
   setKeywords, 
@@ -167,6 +179,131 @@ function KeywordSetup({
   const [editAlertInAppNotifications, setEditAlertInAppNotifications] = useState(true);
   const [editAlertEmailNotifications, setEditAlertEmailNotifications] = useState(true);
   const [editSavedAlertConfigs, setEditSavedAlertConfigs] = useState<AlertConfig[]>([]);
+
+  // CSV upload
+  const [csvPreview, setCsvPreview] = useState<Keyword[]>([]);
+  const [showPreview, setShowPreview] = useState(false);
+  const [csvErrors, setCsvErrors] = useState<string[]>([]);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+
+  const downloadTemplate = () => {
+    const csv = `keyword,platforms,excluded_languages,excluded_keywords,volume_spike,sentiment_spike,competitor_overtake,share_of_voice_drop,competitor_growth
+  apple stock,"X;Reddit","Spanish","scam","yes;high;inapp,email","no","yes;medium;email","no","no"
+  nike shoes,"Facebook;Web Alerts","","cheap","no","yes;medium;email","no","no","yes;low;inapp"`;
+
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "keyword_template.csv";
+    a.click();
+  };
+  
+  const handleCSVUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: (results) => {
+        const parsedKeywords: Keyword[] = [];
+        const errors: string[] = [];
+
+        results.data.forEach((row: any, index: number) => {
+          const rowNum = index + 2;
+
+          if (!row.keyword?.trim()) {
+            errors.push(`Row ${rowNum}: Missing keyword`);
+            return;
+          }
+
+          if (!row.platforms) {
+            errors.push(`Row ${rowNum}: Missing platforms`);
+            return;
+          }
+
+          const platforms = row.platforms.split(";");
+
+          const invalidPlatforms = platforms.filter(
+            (p: string) => !PLATFORM_OPTIONS.includes(p)
+          );
+
+          if (invalidPlatforms.length > 0) {
+            errors.push(
+              `Row ${rowNum}: Invalid platforms (${invalidPlatforms.join(", ")})`
+            );
+            return;
+          }
+
+          const alertConfigs: AlertConfig[] = [];
+
+          Object.entries(ALERT_COLUMN_MAP).forEach(([column, trigger]) => {
+            const value = row[column];
+
+            if (!value || value === "no") return;
+
+            if (!value.startsWith("yes|")) {
+              errors.push(
+                `Row ${rowNum}: Invalid format in ${column} (must be yes|...)`
+              );
+              return;
+            }
+
+            const parts = value.split(";");
+
+            if (parts.length < 3) {
+              errors.push(
+                `Row ${rowNum}: Incomplete alert config in ${column}`
+              );
+              return;
+            }
+
+            const [, sensitivity, channels] = parts;
+
+            if (!["low", "medium", "high"].includes(sensitivity)) {
+              errors.push(
+                `Row ${rowNum}: Invalid sensitivity (${sensitivity})`
+              );
+              return;
+            }
+
+            alertConfigs.push({
+              id: `${Date.now()}-${Math.random()}`,
+              trigger,
+              sensitivity: sensitivity as Sensitivity,
+              inAppNotifications: channels?.includes("inapp"),
+              emailNotifications: channels?.includes("email"),
+            });
+          });
+
+          parsedKeywords.push({
+            id: Date.now() + Math.random(),
+            keyword: row.keyword.trim(),
+            platforms,
+            excludedLanguages: row.excluded_languages?.split(";") || [],
+            excludedKeywords: row.excluded_keywords?.split(";") || [],
+            alertConfigs: alertConfigs.length ? alertConfigs : undefined,
+          });
+        });
+
+        if (errors.length > 0) {
+          setCsvErrors(errors);
+          setShowErrorModal(true);
+          return;
+        }
+
+        // Only show preview if valid rows exist
+        if (parsedKeywords.length > 0) {
+          setCsvPreview(parsedKeywords);
+          setShowPreview(true);
+        }
+
+        e.target.value = "";
+      },
+    });
+  };
 
   const togglePlatform = (platform: Platform) => {
     setSelectedPlatforms((prev) =>
@@ -427,8 +564,35 @@ function KeywordSetup({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      {/* <div className="flex items-center justify-between">
         <h2 className="text-2xl font-semibold text-gray-900">Keyword Setup</h2>
+        <Badge variant="secondary" className="bg-gray-100 text-gray-600 border-gray-200">
+          {keywords.length} configured
+        </Badge>
+      </div> */}
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <h2 className="text-2xl font-semibold text-gray-900">Keyword Setup</h2>
+
+          <div className="flex items-center gap-2">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="file"
+                accept=".csv"
+                onChange={handleCSVUpload}
+                className="hidden"
+              />
+
+              <div className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-lg hover:border-gray-400 transition">
+                <Plus size={16} />
+                <span className="text-sm font-medium">Upload CSV</span>
+              </div>
+            </label>
+            <Button variant="outline" onClick={downloadTemplate}>
+              Download Template
+            </Button>
+          </div>
+        </div>
         <Badge variant="secondary" className="bg-gray-100 text-gray-600 border-gray-200">
           {keywords.length} configured
         </Badge>
@@ -769,6 +933,85 @@ function KeywordSetup({
           )} */}
         </div>
       </div>
+
+  {showPreview && (
+    <div className="bg-white border border-gray-200 rounded-xl p-4 space-y-4 shadow-sm">
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-semibold">Import Preview</h3>
+        <span className="text-sm text-gray-500">
+          {csvPreview.length} keywords detected
+        </span>
+      </div>
+
+      <div className="max-h-60 overflow-auto border rounded-lg">
+        {csvPreview.map((k) => (
+          <div key={k.id} className="p-3 border-b text-sm">
+            <div className="font-medium">{k.keyword}</div>
+            <div className="text-gray-500 text-xs">
+              {k.platforms.join(", ")}
+            </div>
+
+            {k.alertConfigs && (
+              <div className="text-xs text-blue-600 mt-1">
+                {k.alertConfigs.length} alerts configured
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      <div className="flex gap-2 justify-end">
+        <Button
+          variant="outline"
+          onClick={() => {
+            setShowPreview(false);
+            setCsvPreview([]);
+          }}
+        >
+          Cancel
+        </Button>
+
+        <Button
+          className="bg-gray-900 text-white"
+          onClick={() => {
+            setKeywords((prev) => [...prev, ...csvPreview]);
+
+            const newAlerts: Alert[] = [];
+
+            csvPreview.forEach((kw) => {
+              if (!kw.alertConfigs) return;
+
+              kw.alertConfigs.forEach((config) => {
+                newAlerts.push({
+                  id: Date.now() + Math.random(),
+                  scope: "specific-keywords",
+                  selectedKeywords: [kw.keyword],
+                  trigger: config.trigger,
+                  sensitivity: config.sensitivity,
+                  inAppNotifications: config.inAppNotifications,
+                  emailNotifications: config.emailNotifications,
+                  name: generateAlertName(
+                    "specific-keywords",
+                    [kw.keyword],
+                    config.trigger
+                  ),
+                });
+              });
+            });
+
+            if (newAlerts.length > 0) {
+              setAlerts((prev) => [...prev, ...newAlerts]);
+            }
+
+            setShowPreview(false);
+            setCsvPreview([]);
+          }}
+        >
+          Import Keywords
+        </Button>
+      </div>
+    </div>
+  )}
 
       {/* Keywords List */}
       {keywords.length > 0 && (
@@ -1123,7 +1366,7 @@ function KeywordSetup({
                         size="icon"
                         variant="ghost"
                         onClick={() => startEdit(keyword)}
-                        className="h-8 w-8 text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors"
+                        className="h-8 w-8 text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors z-20"
                       >
                         <Edit2 size={14} />
                       </Button>
@@ -1131,7 +1374,7 @@ function KeywordSetup({
                         size="icon"
                         variant="ghost"
                         onClick={() => handleDelete(keyword.id)}
-                        className="h-8 w-8 text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors"
+                        className="h-8 w-8 text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors z-20"
                       >
                         <X size={14} />
                       </Button>
@@ -1143,6 +1386,31 @@ function KeywordSetup({
           </div>
         </div>
       )}
+
+      {showErrorModal && (
+  <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
+    <div className="bg-white rounded-xl shadow-lg w-full max-w-lg p-5 space-y-4">
+      <h3 className="text-lg font-semibold text-red-600">
+        CSV Import Errors
+      </h3>
+
+      <div className="max-h-60 overflow-auto text-sm text-gray-700 space-y-1 border rounded p-3">
+        {csvErrors.map((err, i) => (
+          <div key={i}>• {err}</div>
+        ))}
+      </div>
+
+      <div className="flex justify-end">
+        <Button
+          onClick={() => setShowErrorModal(false)}
+          className="bg-gray-900 text-white"
+        >
+          Got it
+        </Button>
+      </div>
+    </div>
+  </div>
+)}
     </div>
   );
 }
