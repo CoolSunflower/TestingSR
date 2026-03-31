@@ -130,18 +130,39 @@ function SentimentCard() {
       <p className="text-[10px] sm:text-[11px] font-medium text-[#6B7280] tracking-[0.16em] uppercase mb-2">
         Sentiment
       </p>
-      <div className="flex gap-[2px] mb-1.5 mt-1 rounded-full overflow-hidden bg-[#E5E7EB]">
-        {sentiments.map((sentiment) => (
-          <button
-            key={sentiment.key}
-            type="button"
-            onMouseEnter={() => setActiveSource(sentiment)}
-            onFocus={() => setActiveSource(sentiment)}
-            className="h-3.5 transition-opacity hover:opacity-85 focus:outline-none focus:opacity-85"
-            style={{ width: `${sentiment.share}%`, backgroundColor: sentiment.color }}
-            aria-label={`${sentiment.label} sources`}
-          />
-        ))}
+      <div className="relative mb-1 mt-4">
+        <div className="flex gap-[2px] mb-1.5 mt-1 rounded-full overflow-hidden bg-[#E5E7EB]">
+          {sentiments.map((sentiment) => (
+            <button
+              key={sentiment.key}
+              type="button"
+              onMouseEnter={() => setActiveSource(sentiment)}
+              onFocus={() => setActiveSource(sentiment)}
+              className="h-3.5 transition-opacity hover:opacity-85 focus:outline-none focus:opacity-85"
+              style={{ width: `${sentiment.share}%`, backgroundColor: sentiment.color }}
+              aria-label={`${sentiment.label} sources`}
+            />
+          ))}
+        </div>
+        {/* % labels above bar */}
+        {sentiments.map((sentiment, i) => {
+          const start = sourceStarts[i].start;
+          const center = start + sentiment.share / 2;
+
+          return (
+            <span
+              key={sentiment.key}
+              className="absolute text-[10px] font-semibold text-[#878d96]"
+              style={{
+                left: `${center}%`,
+                transform: "translateX(-50%)",
+                top: "-14px",
+              }}
+            >
+              {sentiment.share}%
+            </span>
+          );
+        })}
       </div>
       <div className="relative mt-2 h-4">
         {sentiments.map((sentiment) => {

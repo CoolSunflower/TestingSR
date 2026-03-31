@@ -336,7 +336,7 @@ Best regards`;
   );
 }
 
-export default function Consulting() {
+export default function Consultation() {
   return (
     <div className="min-h-screen bg-[#F5F6F8]">
       <Navbar />
@@ -371,14 +371,14 @@ export default function Consulting() {
             Workspace
           </span>
           <span className="text-gray-300">/</span>
-          <span className="text-gray-600 font-semibold">Consulting</span>
+          <span className="text-gray-600 font-semibold">Consultation</span>
         </div>
 
         {/* Page header */}
         <div className="flex items-end justify-between gap-4 flex-wrap">
           <div>
             <h1 className="text-[48px] sm:text-[56px] lg:text-[64px] leading-[0.95] font-normal text-[#111827] tracking-[-0.03em]">
-              Consulting
+              Consultation
             </h1>
           </div>
           <RequestCallModal />

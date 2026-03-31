@@ -35,6 +35,25 @@ type TriggerType =
   | "share-of-voice-drop"
   | "competitor-growth";
 
+const ALL_TRIGGERS: TriggerType[] = [
+  "volume-spike",
+  "sentiment-spike",
+  "competitor-overtake",
+  "share-of-voice-drop",
+  "competitor-growth"
+];
+
+const getTriggerDisplayText = (trigger: TriggerType): string => {
+  const map: Record<TriggerType, string> = {
+    "volume-spike": "Spike in mentions",
+    "sentiment-spike": "Spike in negative sentiment",
+    "competitor-overtake": "Competitors overtake me",
+    "share-of-voice-drop": "My share of voice drops",
+    "competitor-growth": "Competitors grow faster than me",
+  };
+  return map[trigger];
+};
+
 type Sensitivity = "low" | "medium" | "high";
 
 type Alert = {
@@ -113,6 +132,14 @@ function KeywordSetup({ keywords, setKeywords }: { keywords: Keyword[]; setKeywo
   const [editExcludedLanguages, setEditExcludedLanguages] = useState<string[]>([]);
   const [editExcludedKeywords, setEditExcludedKeywords] = useState<string[]>([]);
   const [editExcludedKeywordInput, setEditExcludedKeywordInput] = useState("");
+
+  const [createAlert, setCreateAlert] = useState(false);
+
+  // Alert config (mini version)
+  const [alertTriggers, setAlertTriggers] = useState<TriggerType[]>([]);
+  const [alertSensitivity, setAlertSensitivity] = useState<Sensitivity>("medium");
+  const [alertInApp, setAlertInApp] = useState(true);
+  const [alertEmail, setAlertEmail] = useState(true);
 
   const togglePlatform = (platform: Platform) => {
     setSelectedPlatforms((prev) =>
@@ -328,7 +355,7 @@ function KeywordSetup({ keywords, setKeywords }: { keywords: Keyword[]; setKeywo
                   <div className="h-px flex-1 bg-gradient-to-r from-transparent via-gray-200 to-transparent" />
                 </div>
 
-                <div className="grid md:grid-cols-2 gap-4">
+                <div className="grid md:grid-cols-3 gap-4">
                   {/* Excluded Languages */}
                   <div className="space-y-2">
                     <label className="text-xs font-medium text-gray-600">
@@ -399,7 +426,7 @@ function KeywordSetup({ keywords, setKeywords }: { keywords: Keyword[]; setKeywo
                         variant="outline"
                         onClick={addExcludedKeyword}
                         disabled={!excludedKeywordInput.trim()}
-                        className="px-3 hover:bg-gray-100 transition-all active:scale-95"
+                        className="h-10 px-3 hover:bg-gray-100 transition-all active:scale-95"
                       >
                         <Plus size={16} />
                       </Button>
@@ -424,6 +451,28 @@ function KeywordSetup({ keywords, setKeywords }: { keywords: Keyword[]; setKeywo
                       </div>
                     )}
                   </div>
+
+                  <div className="space-y-2">
+                    <label className="text-xs font-medium text-gray-600">
+                      Alert Setup
+                    </label>
+
+                    <button
+                      onClick={() => setCreateAlert(!createAlert)}
+                      className={cn(
+                        "h-10 w-full flex items-center justify-between px-4 py-3 rounded-lg border-2 text-sm font-medium transition-all duration-300",
+                        createAlert
+                          ? "bg-gray-900 text-white border-gray-900 shadow-md"
+                          : "bg-white text-gray-700 border-gray-200 hover:border-gray-400"
+                      )}
+                    >
+                      <span>Create Alert</span>
+
+                      {createAlert && (
+                        <Check size={16} className="animate-in zoom-in duration-200" />
+                      )}
+                    </button>
+                  </div>                
                 </div>
               </div>
             </div>
@@ -848,7 +897,8 @@ function AlertsSetup({ keywords }: { keywords: Keyword[] }) {
   // Creation form state
   const [scope, setScope] = useState<ScopeMode | "">("");
   const [selectedKeywords, setSelectedKeywords] = useState<string[]>([]);
-  const [trigger, setTrigger] = useState<TriggerType | "">("");
+  // const [trigger, setTrigger] = useState<TriggerType | "">("");
+  const [triggers, setTriggers] = useState<TriggerType[]>([]);
   const [sensitivity, setSensitivity] = useState<Sensitivity>("medium");
   const [inAppNotifications, setInAppNotifications] = useState(true);
   const [emailNotifications, setEmailNotifications] = useState(true);
@@ -862,9 +912,17 @@ function AlertsSetup({ keywords }: { keywords: Keyword[] }) {
   const [editInAppNotifications, setEditInAppNotifications] = useState(true);
   const [editEmailNotifications, setEditEmailNotifications] = useState(true);
 
+  const toggleTrigger = (value: TriggerType) => {
+    setTriggers((prev) =>
+      prev.includes(value)
+        ? prev.filter((t) => t !== value)
+        : [...prev, value]
+    );
+  };
+
   // Validation
   const isFormValid = () => {
-    if (!trigger) return false;
+    if (!triggers.length) return false;
     if (scope === "specific-keywords" && selectedKeywords.length === 0) return false;
     return true;
   };
@@ -877,10 +935,10 @@ function AlertsSetup({ keywords }: { keywords: Keyword[] }) {
 
   // Create Alert
   const handleCreateAlert = () => {
-    if (!isFormValid() || !scope || !trigger) return;
+    if (!isFormValid() || !scope) return;
 
-    const newAlert: Alert = {
-      id: Date.now(),
+    const newAlerts: Alert[] = triggers.map(trigger => ({
+      id: Date.now() + Math.random(),
       scope,
       selectedKeywords: scope === "specific-keywords" ? selectedKeywords : [],
       trigger,
@@ -888,14 +946,14 @@ function AlertsSetup({ keywords }: { keywords: Keyword[] }) {
       inAppNotifications,
       emailNotifications,
       name: generateAlertName(scope, selectedKeywords, trigger),
-    };
+    }));
 
-    setAlerts([...alerts, newAlert]);
+    setAlerts([...alerts, ...newAlerts]);
 
     // Reset form
     setScope("");
     setSelectedKeywords([]);
-    setTrigger("");
+    setTriggers([]);
     setSensitivity("medium");
     setInAppNotifications(true);
     setEmailNotifications(true);
@@ -1090,17 +1148,28 @@ function AlertsSetup({ keywords }: { keywords: Keyword[] }) {
                   <div className="h-px flex-1 bg-gradient-to-r from-transparent via-gray-200 to-transparent" />
                   <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
                     Trigger Type
-                  </label>
+                  </label>                  
                   <div className="h-px flex-1 bg-gradient-to-r from-transparent via-gray-200 to-transparent" />
+                  <button
+                    onClick={() =>
+                      setTriggers(
+                        triggers.length === ALL_TRIGGERS.length ? [] : ALL_TRIGGERS
+                      )
+                    }
+                    className="text-xs text-gray-600 hover:underline"
+                  >
+                    {triggers.length === ALL_TRIGGERS.length ? "Clear All" : "Select All"}
+                  </button>                
                 </div>
                 <div className="space-y-3">
                   {/* Primary Triggers - 2 columns */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
                     <button
-                      onClick={() => setTrigger(trigger === "volume-spike" ? "" : "volume-spike")}
+                      // onClick={() => setTrigger(trigger === "volume-spike" ? "" : "volume-spike")}
+                      onClick={() => toggleTrigger("volume-spike")}
                       className={cn(
                         "px-4 py-3 rounded-lg text-sm font-medium text-center transition-all duration-300 border-2",
-                        trigger === "volume-spike"
+                        triggers.includes("volume-spike")
                           ? "bg-gray-900 text-white border-gray-900 shadow-md"
                           : "bg-white text-gray-700 border-gray-200 hover:border-gray-400 hover:shadow-sm"
                       )}
@@ -1108,57 +1177,50 @@ function AlertsSetup({ keywords }: { keywords: Keyword[] }) {
                       Spike in mentions
                     </button>
                     <button
-                      onClick={() => setTrigger(trigger === "sentiment-spike" ? "" : "sentiment-spike")}
+                      // onClick={() => setTrigger(trigger === "sentiment-spike" ? "" : "sentiment-spike")}
+                      onClick={() => toggleTrigger("sentiment-spike")}
                       className={cn(
                         "px-4 py-3 rounded-lg text-sm font-medium text-center transition-all duration-300 border-2",
-                        trigger === "sentiment-spike"
+                        triggers.includes("sentiment-spike")
                           ? "bg-gray-900 text-white border-gray-900 shadow-md"
                           : "bg-white text-gray-700 border-gray-200 hover:border-gray-400 hover:shadow-sm"
                       )}
                     >
                       Spike in negative sentiment
                     </button>
-                  </div>
-                  
-                  {/* Competitor Triggers Group */}
-                  <div className="space-y-3">
-                    <p className="text-xs text-gray-500 font-medium pl-1">Competitor-related:</p>
-                    {/* Competitor Triggers - 3 columns */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                      <button
-                        onClick={() => setTrigger(trigger === "competitor-overtake" ? "" : "competitor-overtake")}
-                        className={cn(
-                          "px-4 py-3 rounded-lg text-sm font-medium text-center transition-all duration-300 border-2",
-                          trigger === "competitor-overtake"
-                            ? "bg-gray-900 text-white border-gray-900 shadow-md"
-                            : "bg-white text-gray-700 border-gray-200 hover:border-gray-400 hover:shadow-sm"
-                        )}
-                      >
-                        Competitors overtake me
-                      </button>
-                      <button
-                        onClick={() => setTrigger(trigger === "share-of-voice-drop" ? "" : "share-of-voice-drop")}
-                        className={cn(
-                          "px-4 py-3 rounded-lg text-sm font-medium text-center transition-all duration-300 border-2",
-                          trigger === "share-of-voice-drop"
-                            ? "bg-gray-900 text-white border-gray-900 shadow-md"
-                            : "bg-white text-gray-700 border-gray-200 hover:border-gray-400 hover:shadow-sm"
-                        )}
-                      >
-                        My share of voice drops
-                      </button>
-                      <button
-                        onClick={() => setTrigger(trigger === "competitor-growth" ? "" : "competitor-growth")}
-                        className={cn(
-                          "px-4 py-3 rounded-lg text-sm font-medium text-center transition-all duration-300 border-2",
-                          trigger === "competitor-growth"
-                            ? "bg-gray-900 text-white border-gray-900 shadow-md"
-                            : "bg-white text-gray-700 border-gray-200 hover:border-gray-400 hover:shadow-sm"
-                        )}
-                      >
-                        Competitors grow faster than me
-                      </button>
-                    </div>
+                    <button
+                      onClick={() => toggleTrigger("competitor-overtake")}
+                      className={cn(
+                        "px-4 py-3 rounded-lg text-sm font-medium text-center transition-all duration-300 border-2",
+                        triggers.includes("competitor-overtake")
+                          ? "bg-gray-900 text-white border-gray-900 shadow-md"
+                          : "bg-white text-gray-700 border-gray-200 hover:border-gray-400 hover:shadow-sm"
+                      )}
+                    >
+                      Competitors overtake me
+                    </button>
+                    <button
+                      onClick={() => toggleTrigger("share-of-voice-drop")}
+                      className={cn(
+                        "px-4 py-3 rounded-lg text-sm font-medium text-center transition-all duration-300 border-2",
+                        triggers.includes("share-of-voice-drop")
+                          ? "bg-gray-900 text-white border-gray-900 shadow-md"
+                          : "bg-white text-gray-700 border-gray-200 hover:border-gray-400 hover:shadow-sm"
+                      )}
+                    >
+                      My share of voice drops
+                    </button>
+                    <button
+                      onClick={() => toggleTrigger("competitor-growth")}
+                      className={cn(
+                        "px-4 py-3 rounded-lg text-sm font-medium text-center transition-all duration-300 border-2",
+                        triggers.includes("competitor-growth")
+                          ? "bg-gray-900 text-white border-gray-900 shadow-md"
+                          : "bg-white text-gray-700 border-gray-200 hover:border-gray-400 hover:shadow-sm"
+                      )}
+                    >
+                      Competitors grow faster than me
+                    </button>
                   </div>
                 </div>
               </div>
@@ -1169,7 +1231,7 @@ function AlertsSetup({ keywords }: { keywords: Keyword[] }) {
           <div
             className={cn(
               "grid transition-all duration-500 ease-out",
-              trigger ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
+              triggers.length ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
             )}
           >
             <div className="overflow-hidden">

@@ -13,7 +13,14 @@ import {
 import { SlidersHorizontal } from "lucide-react";
 
 // Toggle between 'bar' and 'area' to switch chart types
-const CHART_TYPE: "bar" | "area" = "area";
+const CHART_TYPE: "bar" | "area" = "bar";
+
+const formatNumber = (value: number) => {
+  if (value >= 1000) {
+    return `${(value / 1000).toFixed(1).replace(/\.0$/, "")}k`;
+  }
+  return value.toString();
+};
 
 function generateSocialData(days = 7) {
   const data = [];
@@ -182,7 +189,31 @@ export default function MentionsChart() {
               />
               <Bar dataKey="negative" stackId="sentiment" fill="#EF4444" />
               <Bar dataKey="neutral" stackId="sentiment" fill="#F59E0B" />
-              <Bar dataKey="positive" stackId="sentiment" fill="#10B981" radius={[4, 4, 0, 0]} />
+              {/* <Bar dataKey="positive" stackId="sentiment" fill="#10B981" radius={[4, 4, 0, 0]} /> */}
+              <Bar
+                dataKey="positive"
+                stackId="sentiment"
+                fill="#10B981"
+                radius={[4, 4, 0, 0]}
+                label={({ x, y, width, index }) => {
+                  const total = data[index].mentions;
+
+                  if (total < 300) return null; // optional sanity filter
+
+                  return (
+                    <text
+                      x={x + width / 2}
+                      y={y - 6}
+                      textAnchor="middle"
+                      fontSize={11}
+                      fill="#b3b7bec6"
+                      fontWeight={500}
+                    >
+                      {formatNumber(total)}
+                    </text>
+                  );
+                }}
+              />            
             </BarChart>
           ) : (
             <AreaChart data={data} margin={{ top: 8, right: 6, left: -20, bottom: 6 }}>
